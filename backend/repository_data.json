@@ -1,0 +1,72 @@
+{
+    "debian": {
+        "name": "Debian",
+
+        "releases": {
+            "trixie": {
+                "name": "Debian 13",
+                "codename": "trixie",
+                "status": "stable"
+            },
+            "bookworm": {
+                "name": "Debian 12",
+                "codename": "bookworm",
+                "status": "oldstable"
+            },
+            "bullseye": {
+                "name": "Debian 11",
+                "codename": "bullseye",
+                "status": "oldoldstable"
+            }
+        },
+
+        "components": [
+            {
+                "id": "main",
+                "name": "Main",
+                "description": "Officially supported free software"
+            },
+            {
+                "id": "contrib",
+                "name": "Contrib",
+                "description": "Free software depending on non-free software"
+            },
+            {
+                "id": "non-free",
+                "name": "Non-Free",
+                "description": "Software that does not meet Debian Free Software Guidelines"
+            },
+            {
+                "id": "non-free-firmware",
+                "name": "Non-Free Firmware",
+                "description": "Firmware packages"
+            }
+        ],
+
+        "suites": [
+            {
+                "id": "release",
+                "name": "Release",
+                "suffix": ""
+            },
+            {
+                "id": "updates",
+                "name": "Updates",
+                "suffix": "-updates"
+            },
+            {
+                "id": "security",
+                "name": "Security",
+                "suffix": "-security"
+            }
+        ],
+
+        "mirrors": [
+            {
+                "id": "debian",
+                "name": "Debian Official",
+                "url": "https://deb.debian.org/debian"
+            }
+        ]
+    }
+}

@@ -44,9 +44,9 @@ Instead of manually writing repository entries, users can select their Linux dis
 repository-generator/
 
 ├── backend/
-│   ├── 
-│   ├──
-│   ├── 
+│   ├── main.py
+│   ├── generator.py
+│   ├── repository_data.json
 │   ├── 
 │   └── 
 │

@@ -1,72 +1,146 @@
 {
-    "debian": {
-        "name": "Debian",
-
-        "releases": {
-            "trixie": {
-                "name": "Debian 13",
-                "codename": "trixie",
-                "status": "stable"
-            },
-            "bookworm": {
-                "name": "Debian 12",
-                "codename": "bookworm",
-                "status": "oldstable"
-            },
-            "bullseye": {
-                "name": "Debian 11",
-                "codename": "bullseye",
-                "status": "oldoldstable"
-            }
-        },
-
-        "components": [
-            {
-                "id": "main",
-                "name": "Main",
-                "description": "Officially supported free software"
-            },
-            {
-                "id": "contrib",
-                "name": "Contrib",
-                "description": "Free software depending on non-free software"
-            },
-            {
-                "id": "non-free",
-                "name": "Non-Free",
-                "description": "Software that does not meet Debian Free Software Guidelines"
-            },
-            {
-                "id": "non-free-firmware",
-                "name": "Non-Free Firmware",
-                "description": "Firmware packages"
-            }
-        ],
-
-        "suites": [
-            {
-                "id": "release",
-                "name": "Release",
-                "suffix": ""
-            },
-            {
-                "id": "updates",
-                "name": "Updates",
-                "suffix": "-updates"
-            },
-            {
-                "id": "security",
-                "name": "Security",
-                "suffix": "-security"
-            }
-        ],
-
-        "mirrors": [
-            {
-                "id": "debian",
-                "name": "Debian Official",
-                "url": "https://deb.debian.org/debian"
-            }
-        ]
+  "schema_version": "1.0",
+  "distribution": "Debian",
+  "official_mirrors": {
+    "main": "https://deb.debian.org/debian",
+    "security": "https://security.debian.org/debian-security",
+    "debug": "https://deb.debian.org/debian-debug",
+    "security_debug": "https://deb.debian.org/debian-security-debug"
+  },
+  "components": [
+    "main",
+    "contrib",
+    "non-free",
+    "non-free-firmware"
+  ],
+  "source_types": [
+    "deb",
+    "deb-src"
+  ],
+  "architectures": [
+    "amd64",
+    "arm64",
+    "armel",
+    "armhf",
+    "i386",
+    "mips64el",
+    "ppc64el",
+    "riscv64",
+    "s390x"
+  ],
+  "suites": {
+    "stable": {
+      "codename": "trixie",
+      "repository": "https://deb.debian.org/debian",
+      "security_repository": "https://security.debian.org/debian-security",
+      "entries": [
+        "trixie",
+        "trixie-updates",
+        "trixie-backports",
+        "trixie-proposed-updates"
+      ],
+      "security": [
+        "trixie-security"
+      ]
+    },
+    "oldstable": {
+      "codename": "bookworm",
+      "repository": "https://deb.debian.org/debian",
+      "security_repository": "https://security.debian.org/debian-security",
+      "entries": [
+        "bookworm",
+        "bookworm-updates",
+        "bookworm-backports",
+        "bookworm-proposed-updates"
+      ],
+      "security": [
+        "bookworm-security"
+      ]
+    },
+    "oldoldstable": {
+      "codename": "bullseye",
+      "repository": "https://deb.debian.org/debian",
+      "security_repository": "https://security.debian.org/debian-security",
+      "entries": [
+        "bullseye",
+        "bullseye-updates",
+        "bullseye-backports",
+        "bullseye-proposed-updates"
+      ],
+      "security": [
+        "bullseye-security"
+      ]
+    },
+    "testing": {
+      "codename": "forky",
+      "repository": "https://deb.debian.org/debian",
+      "entries": [
+        "forky",
+        "forky-updates",
+        "forky-proposed-updates"
+      ],
+      "security": [
+        "forky-security"
+      ]
+    },
+    "unstable": {
+      "codename": "sid",
+      "repository": "https://deb.debian.org/debian",
+      "entries": [
+        "sid"
+      ]
+    },
+    "experimental": {
+      "codename": "experimental",
+      "repository": "https://deb.debian.org/debian",
+      "entries": [
+        "experimental"
+      ]
     }
+  },
+  "debug_repositories": {
+    "repository": "https://deb.debian.org/debian-debug",
+    "security_repository": "https://deb.debian.org/debian-security-debug",
+    "suites": [
+      "trixie",
+      "bookworm",
+      "bullseye",
+      "forky",
+      "sid",
+      "experimental"
+    ]
+  },
+  "deb822": {
+    "recommended": true,
+    "signed_by": "/usr/share/keyrings/debian-archive-keyring.gpg",
+    "example": {
+      "Types": [
+        "deb",
+        "deb-src"
+      ],
+      "URIs": [
+        "https://deb.debian.org/debian"
+      ],
+      "Suites": [
+        "trixie"
+      ],
+      "Components": [
+        "main",
+        "contrib",
+        "non-free",
+        "non-free-firmware"
+      ],
+      "Signed-By": "/usr/share/keyrings/debian-archive-keyring.gpg"
+    }
+  },
+  "legacy_sources_list": {
+    "enabled": true,
+    "format": "deb URI SUITE COMPONENTS",
+    "example": [
+      "deb https://deb.debian.org/debian trixie main contrib non-free non-free-firmware",
+      "deb https://deb.debian.org/debian trixie-updates main contrib non-free non-free-firmware",
+      "deb https://security.debian.org/debian-security trixie-security main contrib non-free non-free-firmware",
+      "deb https://deb.debian.org/debian trixie-backports main contrib non-free non-free-firmware"
+    ]
+  }
 }

@@ -429,6 +429,4 @@ Before submitting a pull request, please make sure that your changes are tested 
 
 ## License
 
-## License
-
 This project is licensed under the MIT License. See the [LICENSE](LICENSE) file for details.

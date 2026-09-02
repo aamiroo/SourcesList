@@ -1,3 +1,9 @@
+"""
+repository generator API.
+
+FastAPI application for validating Debian repository
+configuration options and generating sources.list content.
+"""
 
 # Python's built-in library for working with JSON.
 import json
@@ -74,7 +80,8 @@ def generator(data: RepositoryRequest):
 
     if not valid_suites(
         data.suites,
-        repository_data
+        repository_data,
+        data.release
     ):
         return {
             "error": "Invalid suite"

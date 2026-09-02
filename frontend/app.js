@@ -1,327 +1,1379 @@
 (() => {
     "use strict";
 
-    /* ---------------------------------------------------------
-       Config — adjust to match your backend's routes
-    --------------------------------------------------------- */
+    /* =========================================================
+       Repository Generator
+       Frontend ↔ FastAPI
+       ========================================================= */
+
+
+    /* =========================================================
+       API
+       ========================================================= */
 
     const API = {
-        options: "/api/options", // GET  -> { mirrors, releases, components, suites }
-        generate: "/api/generate", // POST -> { content, filename }
-        distroInfo: "/api/distro-info", // GET ?release=<value> -> { title, description|html, tags, logo }
+        baseURL: "http://127.0.0.1:8000",
+
+        options: "http://127.0.0.1:8000/repository_data",
+
+        generate: "http://127.0.0.1:8000/generator",
     };
 
-    /* ---------------------------------------------------------
-       Theme
-    --------------------------------------------------------- */
 
-    const root = document.documentElement;
-    const themeToggle = document.getElementById("theme-toggle");
+    /* =========================================================
+       DOM
+       ========================================================= */
+
+    const root =
+        document.documentElement;
+
+    const themeToggle =
+        document.getElementById("theme-toggle");
+
+    const mirrorSelect =
+        document.getElementById("mirror");
+
+    const mirrorCustom =
+        document.getElementById("mirror-custom");
+
+    const releaseSelect =
+        document.getElementById("release");
+
+    const componentsBox =
+        document.getElementById("components");
+
+    const suitesBox =
+        document.getElementById("suites");
+
+    const generateBtn =
+        document.getElementById("generate");
+
+    const output =
+        document.getElementById("output");
+
+    const copyBtn =
+        document.getElementById("copy");
+
+    const downloadBtn =
+        document.getElementById("download");
+
+
+    /* =========================================================
+       State
+       ========================================================= */
+
+    let repositoryData = null;
+
+    let lastFilename =
+        "sources.list";
+
+    let isGenerating = false;
+
+
+    /* =========================================================
+       Theme
+       ========================================================= */
+
+    function initializeTheme() {
+
+        const savedTheme =
+            localStorage.getItem(
+                "repo-gen-theme"
+            );
+
+        const systemPrefersLight =
+            window.matchMedia &&
+            window.matchMedia(
+                "(prefers-color-scheme: light)"
+            ).matches;
+
+        const theme =
+            savedTheme ||
+            (
+                systemPrefersLight
+                    ? "light"
+                    : "dark"
+            );
+
+        applyTheme(theme);
+    }
+
 
     function applyTheme(theme) {
-        root.setAttribute("data-theme", theme);
-        localStorage.setItem("repo-gen-theme", theme);
+
+        root.setAttribute(
+            "data-theme",
+            theme
+        );
+
+        localStorage.setItem(
+            "repo-gen-theme",
+            theme
+        );
     }
 
-    const savedTheme = localStorage.getItem("repo-gen-theme");
-    const systemPrefersLight =
-        window.matchMedia &&
-        window.matchMedia("(prefers-color-scheme: light)").matches;
 
-    applyTheme(savedTheme || (systemPrefersLight ? "light" : "dark"));
+    if (themeToggle) {
 
-    themeToggle.addEventListener("click", () => {
-        const next =
-            root.getAttribute("data-theme") === "light" ? "dark" : "light";
-        applyTheme(next);
-    });
+        themeToggle.addEventListener(
+            "click",
+            () => {
 
-    /* ---------------------------------------------------------
-       Elements
-    --------------------------------------------------------- */
+                const current =
+                    root.getAttribute(
+                        "data-theme"
+                    );
 
-    const mirrorSelect = document.getElementById("mirror");
-    const mirrorCustom = document.getElementById("mirror-custom");
-    const releaseSelect = document.getElementById("release");
-    const componentsBox = document.getElementById("components");
-    const suitesBox = document.getElementById("suites");
-    const formatSelect = document.getElementById("format");
-    const generateBtn = document.getElementById("generate");
-    const output = document.getElementById("output");
-    const copyBtn = document.getElementById("copy");
-    const downloadBtn = document.getElementById("download");
+                const next =
+                    current === "light"
+                        ? "dark"
+                        : "light";
 
-    const distroInfo = document.getElementById("distro-info");
-    const distroAvatar = document.getElementById("distro-avatar");
-    const distroTitle = document.getElementById("distro-title");
-    const distroDesc = document.getElementById("distro-desc");
-    const distroTags = document.getElementById("distro-tags");
-
-    let lastFilename = "sources.list";
-
-    /* ---------------------------------------------------------
-       Render helpers
-    --------------------------------------------------------- */
-
-    function fillSelect(select, items = []) {
-        select.innerHTML = items
-            .map((item) => `<option value="${item.value}">${item.label}</option>`)
-            .join("");
+                applyTheme(next);
+            }
+        );
     }
 
-    function fillCheckboxGroup(container, items = [], name) {
-        container.innerHTML = items
-            .map(
-                (item) => `
-                <label>
-                    <input
-                        type="checkbox"
-                        name="${name}"
-                        value="${item.value}"
-                        ${item.checked ? "checked" : ""}
-                    >
-                    ${item.label}
-                </label>`
-            )
-            .join("");
-    }
 
-    function getChecked(container) {
-        return Array.from(
-            container.querySelectorAll("input[type=checkbox]:checked")
-        ).map((el) => el.value);
-    }
+    /* =========================================================
+       Output
+       ========================================================= */
 
     function setOutput(text) {
-        output.textContent = text;
-        output.classList.remove("flash");
+
+        if (!output) return;
+
+        output.textContent =
+            text;
+
+        output.classList.remove(
+            "flash"
+        );
+
         void output.offsetWidth;
-        output.classList.add("flash");
+
+        output.classList.add(
+            "flash"
+        );
     }
 
-    function setLoading(isLoading) {
-        generateBtn.disabled = isLoading;
-        generateBtn.classList.toggle("loading", isLoading);
-        generateBtn.textContent = isLoading ? "Generating…" : "Generate";
+
+    function showError(message) {
+
+        setOutput(
+            "# ERROR\n" +
+            "# " +
+            message
+        );
     }
 
-    function escapeHtml(str) {
-        const div = document.createElement("div");
-        div.textContent = str;
-        return div.innerHTML;
-    }
 
-    /* ---------------------------------------------------------
-       Distro info panel
-    --------------------------------------------------------- */
+    function setLoading(loading) {
 
-    function skeletonHTML(lines) {
-        return Array.from({ length: lines })
-            .map((_, i) => `<div class="skeleton-line" style="width:${92 - i * 16}%"></div>`)
-            .join("");
-    }
+        isGenerating =
+            loading;
 
-    function revealDistroPanel() {
-        if (!distroInfo.classList.contains("hidden")) return;
-        distroInfo.classList.remove("hidden");
-        // Double rAF so the browser commits the display change before animating in.
-        requestAnimationFrame(() => {
-            requestAnimationFrame(() => distroInfo.classList.add("show"));
-        });
-    }
-
-    function flashDistroPanel() {
-        distroInfo.classList.remove("flash");
-        void distroInfo.offsetWidth;
-        distroInfo.classList.add("flash");
-    }
-
-    function renderDistroInfo(data, fallbackTitle) {
-        const title = (data && data.title) || fallbackTitle;
-        distroTitle.textContent = title;
-
-        if (data && data.logo) {
-            distroAvatar.innerHTML = `<img src="${data.logo}" alt="">`;
-        } else {
-            distroAvatar.textContent = (title || "?").charAt(0).toUpperCase();
+        if (!generateBtn) {
+            return;
         }
 
-        if (data && data.html) {
-            distroDesc.innerHTML = data.html;
-        } else if (data && data.description) {
-            const paragraphs = data.description.split(/\n{2,}/).filter(Boolean);
-            distroDesc.innerHTML = paragraphs
-                .map((p) => `<p>${escapeHtml(p)}</p>`)
-                .join("");
-        } else {
-            distroDesc.innerHTML =
-                "<p>No additional details are available for this release yet.</p>";
-        }
+        generateBtn.disabled =
+            loading;
 
-        distroTags.innerHTML = ((data && data.tags) || [])
-            .map((tag) => `<span class="tag">${escapeHtml(tag)}</span>`)
-            .join("");
+        generateBtn.classList.toggle(
+            "loading",
+            loading
+        );
+
+        generateBtn.textContent =
+            loading
+                ? "Generating…"
+                : "Generate";
     }
 
-    async function loadDistroInfo(release) {
-        if (!release) return;
 
-        revealDistroPanel();
-        distroTitle.textContent = "Loading…";
-        distroAvatar.textContent = "…";
-        distroDesc.innerHTML = skeletonHTML(3);
-        distroTags.innerHTML = "";
+    /* =========================================================
+       HTTP
+       ========================================================= */
+
+    async function request(
+        url,
+        options = {}
+    ) {
+
+        let response;
 
         try {
-            const res = await fetch(
-                `${API.distroInfo}?release=${encodeURIComponent(release)}`
+
+            response =
+                await fetch(
+                    url,
+                    options
+                );
+
+        } catch {
+
+            throw new Error(
+                "Cannot connect to FastAPI. " +
+                "Make sure the backend is running."
             );
-            if (!res.ok) throw new Error(`HTTP ${res.status}`);
-            const data = await res.json();
-            renderDistroInfo(data, release);
-        } catch (err) {
-            renderDistroInfo(null, release);
         }
-        flashDistroPanel();
+
+
+        let data = null;
+
+        try {
+
+            data =
+                await response.json();
+
+        } catch {
+
+            data = null;
+        }
+
+
+        if (!response.ok) {
+
+            const message =
+                data?.detail ||
+                data?.error ||
+                `HTTP ${response.status}`;
+
+            throw new Error(
+                message
+            );
+        }
+
+
+        return data;
     }
 
-    releaseSelect.addEventListener("change", () => {
-        loadDistroInfo(releaseSelect.value);
-    });
 
-    /* ---------------------------------------------------------
-       Load options from the backend
-    --------------------------------------------------------- */
+    /* =========================================================
+       Select Helper
+       ========================================================= */
 
-    async function loadOptions() {
-        try {
-            const res = await fetch(API.options);
-            if (!res.ok) throw new Error(`HTTP ${res.status}`);
-            const data = await res.json();
+    function clearSelect(select) {
 
-            fillSelect(mirrorSelect, data.mirrors);
-            fillSelect(releaseSelect, data.releases);
-            fillCheckboxGroup(componentsBox, data.components, "component");
-            fillCheckboxGroup(suitesBox, data.suites, "suite");
+        if (!select) return;
 
-            const hasCustomMirror = (data.mirrors || []).some(
-                (m) => m.value === "custom"
+        select.innerHTML = "";
+    }
+
+
+    function addOption(
+        select,
+        value,
+        label,
+        selected = false
+    ) {
+
+        if (!select) return;
+
+
+        const option =
+            document.createElement(
+                "option"
             );
-            mirrorCustom.classList.toggle(
-                "hidden",
-                !hasCustomMirror || mirrorSelect.value !== "custom"
-            );
 
-            if (releaseSelect.value) {
-                loadDistroInfo(releaseSelect.value);
+
+        option.value =
+            value;
+
+        option.textContent =
+            label;
+
+
+        if (selected) {
+
+            option.selected =
+                true;
+        }
+
+
+        select.appendChild(
+            option
+        );
+    }
+
+
+    /* =========================================================
+       Mirror
+       ========================================================= */
+
+    function loadMirrors() {
+
+        if (!mirrorSelect) {
+            return;
+        }
+
+
+        clearSelect(
+            mirrorSelect
+        );
+
+
+        const mirrors =
+            repositoryData?.official_mirrors ||
+            {};
+
+
+        /*
+         * Main mirror
+         */
+
+        Object.entries(
+            mirrors
+        ).forEach(
+            ([name, url]) => {
+
+                let label;
+
+
+                switch (name) {
+
+                    case "main":
+                        label =
+                            "Debian Main";
+                        break;
+
+                    case "security":
+                        label =
+                            "Debian Security";
+                        break;
+
+                    case "debug":
+                        label =
+                            "Debian Debug";
+                        break;
+
+                    case "security_debug":
+                        label =
+                            "Debian Security Debug";
+                        break;
+
+                    default:
+                        label =
+                            name;
+                }
+
+
+                addOption(
+                    mirrorSelect,
+                    url,
+                    `${label} — ${url}`
+                );
             }
-        } catch (err) {
-            setOutput(
-                `# Could not load options from ${API.options}\n# ${err.message}`
-            );
+        );
+
+
+        /*
+         * Custom mirror
+         */
+
+        addOption(
+            mirrorSelect,
+            "custom",
+            "Custom Mirror"
+        );
+
+
+        updateCustomMirror();
+    }
+
+
+    function updateCustomMirror() {
+
+        if (!mirrorCustom ||
+            !mirrorSelect) {
+
+            return;
+        }
+
+
+        const isCustom =
+            mirrorSelect.value ===
+            "custom";
+
+
+        mirrorCustom.classList.toggle(
+            "hidden",
+            !isCustom
+        );
+
+
+        if (isCustom) {
+
+            mirrorCustom.focus();
         }
     }
 
-    mirrorSelect.addEventListener("change", () => {
-        const isCustom = mirrorSelect.value === "custom";
-        mirrorCustom.classList.toggle("hidden", !isCustom);
-        if (isCustom) mirrorCustom.focus();
-    });
 
-    /* ---------------------------------------------------------
-       Generate — delegates entirely to the backend
-    --------------------------------------------------------- */
+    if (mirrorSelect) {
 
-    async function generate() {
-        const payload = {
-            mirror:
-                mirrorSelect.value === "custom"
-                    ? mirrorCustom.value.trim()
-                    : mirrorSelect.value,
-            release: releaseSelect.value,
-            components: getChecked(componentsBox),
-            suites: getChecked(suitesBox),
-            format: formatSelect.value,
+        mirrorSelect.addEventListener(
+            "change",
+            updateCustomMirror
+        );
+    }
+
+
+    /* =========================================================
+       Releases
+       ========================================================= */
+
+    function loadReleases() {
+
+        if (!releaseSelect) {
+            return;
+        }
+
+
+        clearSelect(
+            releaseSelect
+        );
+
+
+        const suites =
+            repositoryData?.suites ||
+            {};
+
+
+        Object.entries(
+            suites
+        ).forEach(
+            ([name, info]) => {
+
+                const codename =
+                    info.codename ||
+                    "";
+
+
+                let label =
+                    name;
+
+
+                if (codename) {
+
+                    label =
+                        `${name} — ${codename}`;
+                }
+
+
+                addOption(
+                    releaseSelect,
+                    name,
+                    label
+                );
+            }
+        );
+
+
+        /*
+         * Select stable by default
+         */
+
+        if (
+            suites.stable
+        ) {
+
+            releaseSelect.value =
+                "stable";
+
+        } else {
+
+            const first =
+                Object.keys(
+                    suites
+                )[0];
+
+
+            if (first) {
+
+                releaseSelect.value =
+                    first;
+            }
+        }
+    }
+
+
+    /* =========================================================
+       Components
+       ========================================================= */
+
+    function loadComponents() {
+
+        if (!componentsBox) {
+            return;
+        }
+
+
+        componentsBox.innerHTML =
+            "";
+
+
+        const components =
+            repositoryData?.components ||
+            [];
+
+
+        components.forEach(
+            component => {
+
+                const label =
+                    document.createElement(
+                        "label"
+                    );
+
+
+                label.className =
+                    "generator-checkbox";
+
+
+                const checkbox =
+                    document.createElement(
+                        "input"
+                    );
+
+
+                checkbox.type =
+                    "checkbox";
+
+                checkbox.name =
+                    "component";
+
+                checkbox.value =
+                    component;
+
+
+                /*
+                 * Main is selected
+                 * by default.
+                 */
+
+                if (
+                    component ===
+                    "main"
+                ) {
+
+                    checkbox.checked =
+                        true;
+                }
+
+
+                const text =
+                    document.createElement(
+                        "span"
+                    );
+
+
+                text.textContent =
+                    component;
+
+
+                label.appendChild(
+                    checkbox
+                );
+
+                label.appendChild(
+                    text
+                );
+
+
+                componentsBox.appendChild(
+                    label
+                );
+            }
+        );
+    }
+
+
+    /* =========================================================
+       Suites
+       ========================================================= */
+
+    function loadSuites() {
+
+        if (!suitesBox) {
+            return;
+        }
+
+
+        suitesBox.innerHTML =
+            "";
+
+
+        const selectedRelease =
+            releaseSelect?.value;
+
+
+        const releaseData =
+            repositoryData
+                ?.suites
+                ?.[
+                    selectedRelease
+                ];
+
+
+        if (!releaseData) {
+
+            return;
+        }
+
+
+        /*
+         * Regular repository entries
+         *
+         * trixie
+         * trixie-updates
+         * trixie-backports
+         * ...
+         */
+
+        const entries =
+            releaseData.entries ||
+            [];
+
+
+        /*
+         * Security entries
+         *
+         * trixie-security
+         */
+
+        const security =
+            releaseData.security ||
+            [];
+
+
+        const allSuites =
+            [
+                ...entries,
+                ...security
+            ];
+
+
+        allSuites.forEach(
+            (suite, index) => {
+
+                const label =
+                    document.createElement(
+                        "label"
+                    );
+
+
+                label.className =
+                    "generator-checkbox";
+
+
+                const checkbox =
+                    document.createElement(
+                        "input"
+                    );
+
+
+                checkbox.type =
+                    "checkbox";
+
+                checkbox.name =
+                    "suite";
+
+                checkbox.value =
+                    suite;
+
+
+                /*
+                 * First suite selected
+                 * by default.
+                 */
+
+                if (index === 0) {
+
+                    checkbox.checked =
+                        true;
+                }
+
+
+                const text =
+                    document.createElement(
+                        "span"
+                    );
+
+
+                text.textContent =
+                    suite;
+
+
+                label.appendChild(
+                    checkbox
+                );
+
+                label.appendChild(
+                    text
+                );
+
+
+                suitesBox.appendChild(
+                    label
+                );
+            }
+        );
+    }
+
+
+    /* =========================================================
+       Release Change
+       ========================================================= */
+
+    if (releaseSelect) {
+
+        releaseSelect.addEventListener(
+            "change",
+            () => {
+
+                loadSuites();
+
+                updateReleaseInfo();
+            }
+        );
+    }
+
+
+    /* =========================================================
+       Release Information
+       ========================================================= */
+
+    function updateReleaseInfo() {
+
+        const release =
+            releaseSelect?.value;
+
+
+        const data =
+            repositoryData
+                ?.suites
+                ?.[
+                    release
+                ];
+
+
+        if (!data) {
+            return;
+        }
+
+
+        console.log(
+            "Selected release:",
+            release
+        );
+
+
+        console.log(
+            "Codename:",
+            data.codename
+        );
+
+
+        console.log(
+            "Repository:",
+            data.repository
+        );
+    }
+
+
+    /* =========================================================
+       Get Checked Values
+       ========================================================= */
+
+    function getChecked(
+        container
+    ) {
+
+        if (!container) {
+            return [];
+        }
+
+
+        return Array.from(
+            container.querySelectorAll(
+                "input[type='checkbox']:checked"
+            )
+        ).map(
+            checkbox =>
+                checkbox.value
+        );
+    }
+
+
+    /* =========================================================
+       Build Payload
+       ========================================================= */
+
+    function buildPayload() {
+
+        let mirror =
+            mirrorSelect?.value ||
+            "";
+
+
+        /*
+         * Custom mirror
+         */
+
+        if (
+            mirror === "custom"
+        ) {
+
+            mirror =
+                mirrorCustom
+                    ?.value
+                    .trim() ||
+                "";
+        }
+
+
+        const release =
+            releaseSelect?.value ||
+            "";
+
+
+        const components =
+            getChecked(
+                componentsBox
+            );
+
+
+        const suites =
+            getChecked(
+                suitesBox
+            );
+
+
+        return {
+            mirror,
+            release,
+            components,
+            suites
         };
+    }
+
+
+    /* =========================================================
+       Validation
+       ========================================================= */
+
+    function validatePayload(
+        payload
+    ) {
 
         if (!payload.mirror) {
-            setOutput("# Enter a mirror host to continue.");
+
+            return {
+                valid: false,
+                message:
+                    "Please select a mirror."
+            };
+        }
+
+
+        if (!payload.release) {
+
+            return {
+                valid: false,
+                message:
+                    "Please select a release."
+            };
+        }
+
+
+        if (
+            payload.components.length === 0
+        ) {
+
+            return {
+                valid: false,
+                message:
+                    "Select at least one component."
+            };
+        }
+
+
+        if (
+            payload.suites.length === 0
+        ) {
+
+            return {
+                valid: false,
+                message:
+                    "Select at least one suite."
+            };
+        }
+
+
+        return {
+            valid: true
+        };
+    }
+
+
+    /* =========================================================
+       Generate
+       ========================================================= */
+
+    async function generate() {
+
+        if (isGenerating) {
             return;
         }
-        if (!payload.components.length) {
-            setOutput("# Select at least one component.");
+
+
+        const payload =
+            buildPayload();
+
+
+        const validation =
+            validatePayload(
+                payload
+            );
+
+
+        if (!validation.valid) {
+
+            showError(
+                validation.message
+            );
+
             return;
         }
-        if (!payload.suites.length) {
-            setOutput("# Select at least one suite.");
-            return;
-        }
+
 
         setLoading(true);
-        try {
-            const res = await fetch(API.generate, {
-                method: "POST",
-                headers: { "Content-Type": "application/json" },
-                body: JSON.stringify(payload),
-            });
-            if (!res.ok) throw new Error(`HTTP ${res.status}`);
-            const data = await res.json();
 
-            setOutput(data.content || "");
-            lastFilename = data.filename || payload.format;
-        } catch (err) {
-            setOutput(`# Request to ${API.generate} failed\n# ${err.message}`);
+
+        setOutput(
+            "# Generating sources.list...\n" +
+            "# Please wait..."
+        );
+
+
+        try {
+
+            const data =
+                await request(
+                    API.generate,
+                    {
+                        method: "POST",
+
+                        headers: {
+                            "Content-Type":
+                                "application/json"
+                        },
+
+                        body:
+                            JSON.stringify(
+                                payload
+                            )
+                    }
+                );
+
+
+            /*
+             * Backend:
+             *
+             * {
+             *     "format": "sources.list",
+             *     "content": "..."
+             * }
+             */
+
+
+            if (data.error) {
+
+                throw new Error(
+                    data.error
+                );
+            }
+
+
+            const content =
+                data.content ||
+                "";
+
+
+            if (!content) {
+
+                throw new Error(
+                    "Backend returned an empty result."
+                );
+            }
+
+
+            setOutput(
+                content
+            );
+
+
+            lastFilename =
+                data.format ||
+                "sources.list";
+
+
+        } catch (error) {
+
+            showError(
+                error.message
+            );
+
         } finally {
+
             setLoading(false);
         }
     }
 
-    generateBtn.addEventListener("click", generate);
 
-    /* ---------------------------------------------------------
-       Copy / Download
-    --------------------------------------------------------- */
+    if (generateBtn) {
 
-    function flashSuccess(button, label) {
-        const original = button.innerHTML;
-        button.textContent = label;
-        button.classList.add("success");
-        setTimeout(() => {
-            button.innerHTML = original;
-            button.classList.remove("success");
-        }, 1400);
+        generateBtn.addEventListener(
+            "click",
+            generate
+        );
     }
 
-    copyBtn.addEventListener("click", async () => {
-        if (!output.textContent.trim()) return;
-        try {
-            await navigator.clipboard.writeText(output.textContent);
-            flashSuccess(copyBtn, "Copied!");
-        } catch {
-            const range = document.createRange();
-            range.selectNode(output);
-            window.getSelection().removeAllRanges();
-            window.getSelection().addRange(range);
+
+    /* =========================================================
+       Copy
+       ========================================================= */
+
+    function flashSuccess(
+        button,
+        text
+    ) {
+
+        if (!button) return;
+
+
+        const original =
+            button.innerHTML;
+
+
+        button.textContent =
+            text;
+
+
+        button.classList.add(
+            "success"
+        );
+
+
+        setTimeout(
+            () => {
+
+                button.innerHTML =
+                    original;
+
+                button.classList.remove(
+                    "success"
+                );
+
+            },
+            1400
+        );
+    }
+
+
+    if (copyBtn) {
+
+        copyBtn.addEventListener(
+            "click",
+            async () => {
+
+                const text =
+                    output?.textContent
+                        ?.trim();
+
+
+                if (!text) {
+                    return;
+                }
+
+
+                try {
+
+                    await navigator
+                        .clipboard
+                        .writeText(
+                            text
+                        );
+
+
+                    flashSuccess(
+                        copyBtn,
+                        "Copied!"
+                    );
+
+                } catch {
+
+                    /*
+                     * Fallback
+                     */
+
+                    const range =
+                        document.createRange();
+
+
+                    range.selectNode(
+                        output
+                    );
+
+
+                    const selection =
+                        window.getSelection();
+
+
+                    selection
+                        .removeAllRanges();
+
+
+                    selection.addRange(
+                        range
+                    );
+
+
+                    flashSuccess(
+                        copyBtn,
+                        "Selected!"
+                    );
+                }
+            }
+        );
+    }
+
+
+    /* =========================================================
+       Download
+       ========================================================= */
+
+    if (downloadBtn) {
+
+        downloadBtn.addEventListener(
+            "click",
+            () => {
+
+                const text =
+                    output?.textContent
+                        ?.trim();
+
+
+                if (!text) {
+                    return;
+                }
+
+
+                const blob =
+                    new Blob(
+                        [text],
+                        {
+                            type:
+                                "text/plain;charset=utf-8"
+                        }
+                    );
+
+
+                const url =
+                    URL.createObjectURL(
+                        blob
+                    );
+
+
+                const link =
+                    document.createElement(
+                        "a"
+                    );
+
+
+                link.href =
+                    url;
+
+
+                link.download =
+                    lastFilename ||
+                    "sources.list";
+
+
+                document.body.appendChild(
+                    link
+                );
+
+
+                link.click();
+
+
+                link.remove();
+
+
+                URL.revokeObjectURL(
+                    url
+                );
+
+
+                flashSuccess(
+                    downloadBtn,
+                    "Saved!"
+                );
+            }
+        );
+    }
+
+
+    /* =========================================================
+       Keyboard Shortcut
+       ========================================================= */
+
+    document.addEventListener(
+        "keydown",
+        event => {
+
+            if (
+                (event.ctrlKey ||
+                    event.metaKey) &&
+                event.key === "Enter"
+            ) {
+
+                event.preventDefault();
+
+                generate();
+            }
         }
-    });
+    );
 
-    downloadBtn.addEventListener("click", () => {
-        if (!output.textContent.trim()) return;
-        const blob = new Blob([output.textContent], { type: "text/plain" });
-        const url = URL.createObjectURL(blob);
-        const a = document.createElement("a");
-        a.href = url;
-        a.download = lastFilename;
-        document.body.appendChild(a);
-        a.click();
-        a.remove();
-        URL.revokeObjectURL(url);
-        flashSuccess(downloadBtn, "Saved!");
-    });
 
-    /* ---------------------------------------------------------
-       Init
-    --------------------------------------------------------- */
+    /* =========================================================
+       Load Repository Data
+       ========================================================= */
 
-    loadOptions();
+    async function loadRepositoryData() {
+
+        try {
+
+            setOutput(
+                "# Connecting to Repository Generator API..."
+            );
+
+
+            /*
+             * GET
+             *
+             * /repository_data
+             */
+
+            repositoryData =
+                await request(
+                    API.options
+                );
+
+
+            /*
+             * Fill everything
+             */
+
+            loadMirrors();
+
+            loadReleases();
+
+            loadComponents();
+
+            loadSuites();
+
+            updateReleaseInfo();
+
+
+            setOutput(
+                "# Repository data loaded successfully.\n" +
+                "# Configure your options and click Generate."
+            );
+
+
+        } catch (error) {
+
+            showError(
+                error.message
+            );
+        }
+    }
+
+
+    /* =========================================================
+       API Health Check
+       ========================================================= */
+
+    async function checkAPI() {
+
+        try {
+
+            const response =
+                await fetch(
+                    `${API.baseURL}/`,
+                    {
+                        method: "GET"
+                    }
+                );
+
+
+            return response.ok;
+
+        } catch {
+
+            return false;
+        }
+    }
+
+
+    /* =========================================================
+       Initialize
+       ========================================================= */
+
+    async function initialize() {
+
+        /*
+         * Theme
+         */
+
+        initializeTheme();
+
+
+        /*
+         * Check FastAPI
+         */
+
+        const connected =
+            await checkAPI();
+
+
+        if (!connected) {
+
+            showError(
+                "FastAPI is not running.\n\n" +
+                "Start it with:\n" +
+                "uvicorn main:app --reload"
+            );
+
+            return;
+        }
+
+
+        /*
+         * Load JSON
+         */
+
+        await loadRepositoryData();
+    }
+
+
+    /* =========================================================
+       START
+       ========================================================= */
+
+    initialize();
+
 })();

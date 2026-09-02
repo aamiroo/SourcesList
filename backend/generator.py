@@ -1,3 +1,8 @@
+"""
+generate debian APT repository entries based on a mirror,
+release, components, and suites.
+"""
+
 def generate(
         
     # Everyone should be a string.

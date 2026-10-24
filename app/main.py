@@ -15,13 +15,14 @@ from fastapi.middleware.cors import CORSMiddleware
 from pydantic import BaseModel
 
 # Using our own file(generator.py)
-from generator import generate
-from validator import (
+from .generator import generate
+from .validator import (
     valid_components,
     valid_mirror,
     valid_release,
     valid_suites,
 )
+from pathlib import Path
 
 app = FastAPI()
 app.add_middleware(
@@ -34,7 +35,8 @@ app.add_middleware(
 
 # reading data.
 def load_data():
-    with open("repository_data.json", "r") as file:
+    data_file = Path(__file__).resolve().parent / "repository_data.json"
+    with data_file.open("r", encoding="utf-8") as file:
         return json.load(file)
 
 # Building a request model.

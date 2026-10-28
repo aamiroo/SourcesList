@@ -7,7 +7,6 @@ def generate(
         
     # Everyone should be a string.
     mirror: str,
-    release: str,
     components: list[str],
     suites: list[str],
 ) -> str:
@@ -15,11 +14,7 @@ def generate(
     lines = []
 
     for suite in suites:
-
-        if suite == "release":
-            suite_name = release
-        else:
-            suite_name = f"{release}-{suite}"
+        suite_name = suite
 
         line = (
             f"deb {mirror} "

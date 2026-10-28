@@ -96,13 +96,32 @@ def generator(data: RepositoryRequest):
         return {
             "error": "Invalid mirror"
         }
-    content = generate(
-        mirror=data.mirror,
-        release=data.release,
-        components=data.components,
-        suites=data.suites,
+
+    release_data = repository_data["suites"][data.release]
+
+    security_suites = release_data.get("security" , [])
+    security_mirror = release_data.get(
+        "security_repository",
+        repository_data["official_mirrors"]["security"],
     )
-# answer Api
+    lines = []
+
+    for suite in data.suites:
+        mirror = (
+            security_mirror
+            if suite in security_suites
+            else data.mirror
+        )
+        
+        content = generate(
+            mirror=mirror,
+            components=data.components,
+            suites=[suite],
+        )
+        lines.append(content)
+
+    content = "\n".join(lines)
+    
     return {
         "format": "sources.list",
         "content": content

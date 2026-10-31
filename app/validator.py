@@ -11,7 +11,7 @@ def valid_components(components: list[str], data: dict) -> bool:
     
     valid_components_set = set(data["components"])
     return all (
-        components in valid_components_set
+        component in valid_components_set
         for component in components
     )
 
@@ -20,11 +20,13 @@ def valid_suites(suites: list[str], data: dict, release: str) -> bool:
 
     if not suites:
         return False
+    
 
     release_data = data["suites"].get(release)
     valid_suites_set = set(
         release_data.get("entries", []) + release_data.get("security",[])
     )
+
 
     return all (
         suite in valid_suites_set for suite in suites

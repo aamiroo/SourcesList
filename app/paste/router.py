@@ -5,13 +5,13 @@ from fastapi import APIRouter , Depends , HTTPException
 from sqlalchemy.orm import Session
 
 from .models import Paste
-from .database import SessionLocal
+from .database import get_session_local
 from .schemas import PasteCreate , PasteResponse
 
 router = APIRouter(prefix="/paste" , tags=["Paste"])
 
 def get_db ():
-    db = SessionLocal()
+    db = get_session_local()
     try:
         yield db
     finally:

@@ -9,7 +9,7 @@ from sqlalchemy.orm import DeclarativeBase , Mapped , mapped_column
 class Base(DeclarativeBase):
     pass
 class Paste (Base):
-    __tablename__ = "paste"
+    __tablename__ = "pastes"
 
     id: Mapped[uuid.UUID] = mapped_column(
         UUID(as_uuid=True),
@@ -29,7 +29,7 @@ class Paste (Base):
         default="sources.list"
     )
 
-    create_at: Mapped[datetime] = mapped_column(
+    created_at: Mapped[datetime] = mapped_column(
         DateTime(timezone=True),
         nullable=False,
         index=True

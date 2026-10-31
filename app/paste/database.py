@@ -1,22 +1,35 @@
-import os 
+import os
+from functools import lru_cache
 
-from .models import Base
 from sqlalchemy import create_engine
 from sqlalchemy.orm import sessionmaker
 
-DATABASE_URL = os.getenv("DATABASE_URL")
+from .models import Base
 
-if not DATABASE_URL:
-    raise RecursionError("DATABASE_URL environment variable is not set")
-engine = create_engine(
-    DATABASE_URL,
-    pool_pre_ping=True
-)
-SessionLocal = sessionmaker(
-    bind=engine,
-    autoflush=False,
-    autocommit = False
-)
+
+@lru_cache
+def get_engine():
+    database_url = os.getenv("DATABASE_URL")
+
+    if not database_url:
+        raise RuntimeError(
+            "DATABASE_URL environment variable is not set"
+        )
+
+    return create_engine(
+        database_url,
+        pool_pre_ping=True,
+    )
+
+
+@lru_cache
+def get_session_local():
+    return sessionmaker(
+        bind=get_engine(),
+        autoflush=False,
+        autocommit=False,
+    )
+
 
 def create_table():
-    Base.metadata.create_all(bind=engine)
+    Base.metadata.create_all(bind=get_engine())

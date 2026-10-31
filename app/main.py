@@ -28,7 +28,7 @@ app = FastAPI()
 
 @app.on_event("startup")
 def startup():
-    create_table
+    create_table()
 
 app.include_router(paste_router)
 app.add_middleware(

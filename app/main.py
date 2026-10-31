@@ -12,6 +12,7 @@ from fastapi.middleware.cors import CORSMiddleware
 from pydantic import BaseModel
 
 from .paste.database import create_table
+from .paste.router import router as paste_router
 from .generator import generate
 from .validator import (
     valid_components,
@@ -29,6 +30,7 @@ app = FastAPI()
 def startup():
     create_table
 
+app.include_router(paste_router)
 app.add_middleware(
     CORSMiddleware,
     allow_origins=["*"],

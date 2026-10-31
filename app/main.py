@@ -8,7 +8,7 @@ configuration options and generating sources.list content.
 # Python's built-in library for working with JSON.
 import json
 
-from fastapi import FastAPI
+from fastapi import FastAPI , HTTPException
 from fastapi.middleware.cors import CORSMiddleware
 
 # Used for data validation.
@@ -62,40 +62,45 @@ def repo_data():
 @app.post("/generator")
 def generator(data: RepositoryRequest):
 
-# Run Generator.
+    # Run Generator.
     repository_data = load_data()
     if not valid_release(
         data.release,
         repository_data
     ):
-        return {
-            "error": f"Invalid release: {data.release}"
-        }
+        raise HTTPException(
+                status_code=400,
+                detail=f"Invalid release: {data.release}",
+            )
 
     if not valid_components(
         data.components,
         repository_data
     ):
-        return {
-            "error": "Invalid component"
-        }
+        raise HTTPException(
+            status_code=400,
+            detail=f"Invalid components: {data.release}",
+        )
 
     if not valid_suites(
         data.suites,
         repository_data,
         data.release
     ):
-        return {
-            "error": "Invalid suite"
-        }
+        raise HTTPException(
+            status_code=400,
+            detail=f"Invalid suites: {data.release}",
+        )
 
     if not valid_mirror(
         data.mirror,
         repository_data
     ):
-        return {
-            "error": "Invalid mirror"
-        }
+        raise HTTPException(
+            status_code=400,
+            detail=f"Invalid mirror: {data.mirror}",
+        )
+        
 
     release_data = repository_data["suites"][data.release]
 

@@ -9,6 +9,8 @@ import json
 
 from fastapi import FastAPI , HTTPException
 from fastapi.middleware.cors import CORSMiddleware
+from fastapi.responses import FileResponse
+from fastapi.staticfiles import StaticFiles
 from pydantic import BaseModel
 
 from .paste.database import create_table
@@ -53,19 +55,19 @@ class RepositoryRequest(BaseModel):
     suites: list[str]
 
 
-@app.get("/")
+@app.get("/api/health")
 def home():
     return {
         "message": "Repository Generator API"
     }
 
 
-@app.get("/repository_data")
+@app.get("/api/repository_data")
 def repo_data():
     return load_data()
 
 
-@app.post("/generator")
+@app.post("/api/generator")
 def generator(data: RepositoryRequest):
 
     # Run Generator.
@@ -137,3 +139,14 @@ def generator(data: RepositoryRequest):
         "format": "sources.list",
         "content": content
     }
+
+
+FRONTEND_DIR = Path(__file__).resolve().parents[1] / "frontend"
+
+
+@app.get("/paste/{paste_id}")
+def paste_page(paste_id: str):
+    return FileResponse(FRONTEND_DIR / "index.html")
+
+
+app.mount("/", StaticFiles(directory=FRONTEND_DIR, html=True), name="frontend")

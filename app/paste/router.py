@@ -8,7 +8,7 @@ from .models import Paste
 from .database import get_session_local
 from .schemas import PasteCreate , PasteResponse
 
-router = APIRouter(prefix="/paste" , tags=["Paste"])
+router = APIRouter(prefix="/api/paste" , tags=["Paste"])
 
 def get_db ():
     db = get_session_local()()

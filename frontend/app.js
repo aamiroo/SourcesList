@@ -1,1378 +1,980 @@
 (() => {
     "use strict";
 
-    /* =========================================================
-       Repository Generator
-       Frontend ↔ FastAPI
-       ========================================================= */
+    // ==========================================
+    // API
+    // ==========================================
 
+   const API = {
+    baseURL: "/api",
+    options: "/api/repository_data",
+    generate: "/api/generator",
+    paste: "/api/paste/",
+};
 
-    /* =========================================================
-       API
-       ========================================================= */
+    // ==========================================
+    // DOM
+    // ==========================================
 
-    const API = {
-        baseURL: "http://127.0.0.1:8000",
+    const $ = (selector) => document.querySelector(selector);
 
-        options: "http://127.0.0.1:8000/repository_data",
+    const dom = {
+        themeToggle: $("#theme-toggle"),
 
-        generate: "http://127.0.0.1:8000/generator",
+        generatorView: $("#generator-view"),
+        pasteView: $("#paste-view"),
+
+        mirror: $("#mirror"),
+        mirrorCustom: $("#mirror-custom"),
+        release: $("#release"),
+        components: $("#components"),
+        suites: $("#suites"),
+        format: $("#format"),
+
+        generate: $("#generate"),
+        output: $("#output"),
+        copy: $("#copy"),
+        download: $("#download"),
+
+        distroInfo: $("#distro-info"),
+        distroAvatar: $("#distro-avatar"),
+        distroTitle: $("#distro-title"),
+        distroDesc: $("#distro-desc"),
+        distroTags: $("#distro-tags"),
+
+        outputFilename: $("#output-filename"),
+
+        sharePaste: $("#share-paste"),
+        pasteShare: $("#paste-share"),
+        pasteURL: $("#paste-url"),
+        copyPasteURL: $("#copy-paste-url"),
+        pasteExpiration: $("#paste-expiration"),
+
+        pasteFormat: $("#paste-format"),
+        pasteViewExpiration: $("#paste-view-expiration"),
+        pasteFilename: $("#paste-filename"),
+        pasteContent: $("#paste-content"),
+        pasteCopy: $("#paste-copy"),
+        pasteDownload: $("#paste-download"),
+
+        pasteError: $("#paste-error"),
+        pasteErrorMessage: $("#paste-error-message"),
     };
 
 
-    /* =========================================================
-       DOM
-       ========================================================= */
-
-    const root =
-        document.documentElement;
-
-    const themeToggle =
-        document.getElementById("theme-toggle");
-
-    const mirrorSelect =
-        document.getElementById("mirror");
-
-    const mirrorCustom =
-        document.getElementById("mirror-custom");
-
-    const releaseSelect =
-        document.getElementById("release");
-
-    const componentsBox =
-        document.getElementById("components");
-
-    const suitesBox =
-        document.getElementById("suites");
-
-    const generateBtn =
-        document.getElementById("generate");
-
-    const output =
-        document.getElementById("output");
-
-    const copyBtn =
-        document.getElementById("copy");
-
-    const downloadBtn =
-        document.getElementById("download");
-
-
-    /* =========================================================
-       State
-       ========================================================= */
+    // ==========================================
+    // State
+    // ==========================================
 
     let repositoryData = null;
 
-    let lastFilename =
-        "sources.list";
+    let lastContent = "";
+    let lastFilename = "sources.list";
+
+    let pasteContent = "";
+    let pasteFilename = "sources.list";
 
     let isGenerating = false;
+    let isCreatingPaste = false;
+
+    const PASTE_LIFETIME_HOURS = 2;
 
 
-    /* =========================================================
-       Theme
-       ========================================================= */
+    // ==========================================
+    // Utilities
+    // ==========================================
+
+    function setText(element, value) {
+        if (element) {
+            element.textContent = value;
+        }
+    }
+
+
+    function formatDate(value) {
+        const date = new Date(value);
+
+        if (Number.isNaN(date.getTime())) {
+            return "Unknown";
+        }
+
+        return new Intl.DateTimeFormat(undefined, {
+            dateStyle: "medium",
+            timeStyle: "short",
+        }).format(date);
+    }
+
+
+    function getFileName(format) {
+        const knownFormats = {
+            "sources.list": "sources.list",
+            "debian.sources": "debian.sources",
+        };
+
+        return knownFormats[format] || "sources.list";
+    }
+
+
+    function getPasteId() {
+        const match = window.location.pathname.match(
+            /^\/paste\/([^/]+)\/?$/
+        );
+
+        return match ? match[1] : null;
+    }
+
+
+    function showView(view) {
+        if (dom.generatorView) {
+            dom.generatorView.hidden = view !== "generator";
+        }
+
+        if (dom.pasteView) {
+            dom.pasteView.hidden = view !== "paste";
+        }
+    }
+
+
+    function flashSuccess(button, message, duration = 1600) {
+        if (!button) return;
+
+        const original = button.dataset.originalText
+            || button.textContent;
+
+        button.dataset.originalText = original;
+
+        button.textContent = message;
+
+        window.setTimeout(() => {
+            button.textContent = original;
+        }, duration);
+    }
+
+
+    // ==========================================
+    // Theme
+    // ==========================================
 
     function initializeTheme() {
+        const storedTheme = localStorage.getItem("repo-gen-theme");
 
-        const savedTheme =
-            localStorage.getItem(
-                "repo-gen-theme"
-            );
+        const preferredTheme = window.matchMedia(
+            "(prefers-color-scheme: light)"
+        ).matches
+            ? "light"
+            : "dark";
 
-        const systemPrefersLight =
-            window.matchMedia &&
-            window.matchMedia(
-                "(prefers-color-scheme: light)"
-            ).matches;
-
-        const theme =
-            savedTheme ||
-            (
-                systemPrefersLight
-                    ? "light"
-                    : "dark"
-            );
-
-        applyTheme(theme);
+        applyTheme(storedTheme || preferredTheme);
     }
 
 
     function applyTheme(theme) {
+        document.documentElement.dataset.theme = theme;
 
-        root.setAttribute(
-            "data-theme",
-            theme
-        );
+        localStorage.setItem("repo-gen-theme", theme);
 
-        localStorage.setItem(
-            "repo-gen-theme",
-            theme
-        );
-    }
+        if (dom.themeToggle) {
+            dom.themeToggle.setAttribute(
+                "aria-label",
+                theme === "dark"
+                    ? "Switch to light theme"
+                    : "Switch to dark theme"
+            );
 
+            const icon = dom.themeToggle.querySelector(".theme-icon");
 
-    if (themeToggle) {
-
-        themeToggle.addEventListener(
-            "click",
-            () => {
-
-                const current =
-                    root.getAttribute(
-                        "data-theme"
-                    );
-
-                const next =
-                    current === "light"
-                        ? "dark"
-                        : "light";
-
-                applyTheme(next);
+            if (icon) {
+                icon.textContent = theme === "dark" ? "☼" : "☾";
             }
-        );
-    }
-
-
-    /* =========================================================
-       Output
-       ========================================================= */
-
-    function setOutput(text) {
-
-        if (!output) return;
-
-        output.textContent =
-            text;
-
-        output.classList.remove(
-            "flash"
-        );
-
-        void output.offsetWidth;
-
-        output.classList.add(
-            "flash"
-        );
-    }
-
-
-    function showError(message) {
-
-        setOutput(
-            "# ERROR\n" +
-            "# " +
-            message
-        );
-    }
-
-
-    function setLoading(loading) {
-
-        isGenerating =
-            loading;
-
-        if (!generateBtn) {
-            return;
         }
-
-        generateBtn.disabled =
-            loading;
-
-        generateBtn.classList.toggle(
-            "loading",
-            loading
-        );
-
-        generateBtn.textContent =
-            loading
-                ? "Generating…"
-                : "Generate";
     }
 
 
-    /* =========================================================
-       HTTP
-       ========================================================= */
+    function toggleTheme() {
+        const currentTheme =
+            document.documentElement.dataset.theme || "dark";
 
-    async function request(
-        url,
-        options = {}
-    ) {
+        applyTheme(
+            currentTheme === "dark" ? "light" : "dark"
+        );
+    }
 
+
+    // ==========================================
+    // HTTP
+    // ==========================================
+
+    async function request(url, options = {}) {
         let response;
 
         try {
-
-            response =
-                await fetch(
-                    url,
-                    options
-                );
-
-        } catch {
-
+            response = await fetch(url, {
+                ...options,
+                headers: {
+                    "Content-Type": "application/json",
+                    ...options.headers,
+                },
+            });
+        } catch (error) {
             throw new Error(
-                "Cannot connect to FastAPI. " +
-                "Make sure the backend is running."
+                "Unable to connect to the server. Check your connection."
             );
         }
-
 
         let data = null;
 
         try {
-
-            data =
-                await response.json();
-
+            data = await response.json();
         } catch {
-
             data = null;
         }
 
-
         if (!response.ok) {
-
             const message =
                 data?.detail ||
                 data?.error ||
-                `HTTP ${response.status}`;
+                `Request failed (${response.status})`;
 
-            throw new Error(
-                message
-            );
+            const error = new Error(message);
+
+            error.status = response.status;
+
+            throw error;
         }
-
 
         return data;
     }
 
 
-    /* =========================================================
-       Select Helper
-       ========================================================= */
+    // ==========================================
+    // Output
+    // ==========================================
 
-    function clearSelect(select) {
+    function setOutput(content) {
+        if (!dom.output) return;
 
-        if (!select) return;
+        dom.output.textContent = content;
 
-        select.innerHTML = "";
-    }
+        lastContent = content;
 
-
-    function addOption(
-        select,
-        value,
-        label,
-        selected = false
-    ) {
-
-        if (!select) return;
-
-
-        const option =
-            document.createElement(
-                "option"
-            );
-
-
-        option.value =
-            value;
-
-        option.textContent =
-            label;
-
-
-        if (selected) {
-
-            option.selected =
-                true;
+        if (dom.copy) {
+            dom.copy.disabled = !content;
         }
 
+        if (dom.download) {
+            dom.download.disabled = !content;
+        }
 
-        select.appendChild(
-            option
-        );
+        if (dom.sharePaste) {
+            dom.sharePaste.disabled = !content;
+        }
     }
 
 
-    /* =========================================================
-       Mirror
-       ========================================================= */
+    function showOutputError(message) {
+        setOutput(`# Error\n# ${message}`);
+
+        lastContent = "";
+
+        if (dom.copy) dom.copy.disabled = true;
+        if (dom.download) dom.download.disabled = true;
+        if (dom.sharePaste) dom.sharePaste.disabled = true;
+    }
+
+
+    function setLoading(button, loading, label) {
+        if (!button) return;
+
+        if (loading) {
+            button.dataset.originalText = button.textContent;
+            button.disabled = true;
+            button.textContent = label || "Please wait...";
+        } else {
+            button.disabled = false;
+
+            button.textContent =
+                button.dataset.originalText ||
+                button.textContent;
+        }
+    }
+
+
+    // ==========================================
+    // Mirror
+    // ==========================================
 
     function loadMirrors() {
+        const mirrors = repositoryData?.official_mirrors;
 
-        if (!mirrorSelect) {
-            return;
-        }
+        if (!mirrors || !dom.mirror) return;
 
+        dom.mirror.innerHTML = "";
 
-        clearSelect(
-            mirrorSelect
-        );
-
-
-        const mirrors =
-            repositoryData?.official_mirrors ||
-            {};
-
-
-        /*
-         * Main mirror
-         */
-
-        Object.entries(
-            mirrors
-        ).forEach(
-            ([name, url]) => {
-
-                let label;
-
-
-                switch (name) {
-
-                    case "main":
-                        label =
-                            "Debian Main";
-                        break;
-
-                    case "security":
-                        label =
-                            "Debian Security";
-                        break;
-
-                    case "debug":
-                        label =
-                            "Debian Debug";
-                        break;
-
-                    case "security_debug":
-                        label =
-                            "Debian Security Debug";
-                        break;
-
-                    default:
-                        label =
-                            name;
-                }
-
-
-                addOption(
-                    mirrorSelect,
-                    url,
-                    `${label} — ${url}`
-                );
+        Object.entries(mirrors).forEach(([key, value]) => {
+            if (key === "security" || key === "debug" ||
+                key === "security_debug") {
+                return;
             }
-        );
 
+            const option = document.createElement("option");
 
-        /*
-         * Custom mirror
-         */
+            option.value = value;
 
-        addOption(
-            mirrorSelect,
-            "custom",
-            "Custom Mirror"
-        );
+            option.textContent = key
+                .replaceAll("_", " ")
+                .replace(/\b\w/g, char => char.toUpperCase());
 
+            dom.mirror.appendChild(option);
+        });
 
-        updateCustomMirror();
+        const custom = document.createElement("option");
+
+        custom.value = "__custom__";
+        custom.textContent = "Custom mirror";
+
+        dom.mirror.appendChild(custom);
     }
 
 
-    function updateCustomMirror() {
+    function handleMirrorChange() {
+        const isCustom = dom.mirror.value === "__custom__";
 
-        if (!mirrorCustom ||
-            !mirrorSelect) {
-
-            return;
-        }
-
-
-        const isCustom =
-            mirrorSelect.value ===
-            "custom";
-
-
-        mirrorCustom.classList.toggle(
-            "hidden",
-            !isCustom
-        );
-
+        dom.mirrorCustom.hidden = !isCustom;
 
         if (isCustom) {
-
-            mirrorCustom.focus();
+            dom.mirrorCustom.focus();
         }
     }
 
 
-    if (mirrorSelect) {
-
-        mirrorSelect.addEventListener(
-            "change",
-            updateCustomMirror
-        );
-    }
-
-
-    /* =========================================================
-       Releases
-       ========================================================= */
+    // ==========================================
+    // Releases
+    // ==========================================
 
     function loadReleases() {
+        const releases = repositoryData?.suites;
 
-        if (!releaseSelect) {
-            return;
-        }
+        if (!releases || !dom.release) return;
 
+        dom.release.innerHTML = "";
 
-        clearSelect(
-            releaseSelect
+        Object.entries(releases).forEach(([key, value]) => {
+            const option = document.createElement("option");
+
+            option.value = key;
+
+            option.textContent =
+                value.codename
+                    ? `${key} (${value.codename})`
+                    : key;
+
+            dom.release.appendChild(option);
+        });
+
+        const stableRelease = Object.entries(releases).find(
+            ([, value]) => value.codename === "stable"
         );
 
-
-        const suites =
-            repositoryData?.suites ||
-            {};
-
-
-        Object.entries(
-            suites
-        ).forEach(
-            ([name, info]) => {
-
-                const codename =
-                    info.codename ||
-                    "";
-
-
-                let label =
-                    name;
-
-
-                if (codename) {
-
-                    label =
-                        `${name} — ${codename}`;
-                }
-
-
-                addOption(
-                    releaseSelect,
-                    name,
-                    label
-                );
-            }
-        );
-
-
-        /*
-         * Select stable by default
-         */
-
-        if (
-            suites.stable
-        ) {
-
-            releaseSelect.value =
-                "stable";
-
+        if (stableRelease) {
+            dom.release.value = stableRelease[0];
         } else {
-
-            const first =
-                Object.keys(
-                    suites
-                )[0];
-
-
-            if (first) {
-
-                releaseSelect.value =
-                    first;
-            }
+            dom.release.selectedIndex = 0;
         }
     }
 
 
-    /* =========================================================
-       Components
-       ========================================================= */
+    // ==========================================
+    // Components
+    // ==========================================
 
     function loadComponents() {
+        const components = repositoryData?.components;
 
-        if (!componentsBox) {
+        if (!Array.isArray(components) || !dom.components) {
             return;
         }
 
+        dom.components.innerHTML = "";
 
-        componentsBox.innerHTML =
-            "";
+        components.forEach((component, index) => {
+            const label = document.createElement("label");
 
+            label.className = "choice-item";
 
-        const components =
-            repositoryData?.components ||
-            [];
+            const input = document.createElement("input");
 
+            input.type = "checkbox";
+            input.name = "component";
+            input.value = component;
 
-        components.forEach(
-            component => {
-
-                const label =
-                    document.createElement(
-                        "label"
-                    );
-
-
-                label.className =
-                    "generator-checkbox";
-
-
-                const checkbox =
-                    document.createElement(
-                        "input"
-                    );
-
-
-                checkbox.type =
-                    "checkbox";
-
-                checkbox.name =
-                    "component";
-
-                checkbox.value =
-                    component;
-
-
-                /*
-                 * Main is selected
-                 * by default.
-                 */
-
-                if (
-                    component ===
-                    "main"
-                ) {
-
-                    checkbox.checked =
-                        true;
-                }
-
-
-                const text =
-                    document.createElement(
-                        "span"
-                    );
-
-
-                text.textContent =
-                    component;
-
-
-                label.appendChild(
-                    checkbox
-                );
-
-                label.appendChild(
-                    text
-                );
-
-
-                componentsBox.appendChild(
-                    label
-                );
+            if (component === "main" || index === 0) {
+                input.checked = true;
             }
-        );
+
+            const text = document.createElement("span");
+
+            text.textContent = component;
+
+            label.append(input, text);
+
+            dom.components.appendChild(label);
+        });
     }
 
 
-    /* =========================================================
-       Suites
-       ========================================================= */
+    // ==========================================
+    // Suites
+    // ==========================================
 
     function loadSuites() {
-
-        if (!suitesBox) {
-            return;
-        }
-
-
-        suitesBox.innerHTML =
-            "";
-
-
-        const selectedRelease =
-            releaseSelect?.value;
-
-
         const releaseData =
-            repositoryData
-                ?.suites
-                ?.[
-                    selectedRelease
-                ];
+            repositoryData?.suites?.[dom.release?.value];
 
+        if (!releaseData || !dom.suites) return;
 
-        if (!releaseData) {
+        dom.suites.innerHTML = "";
 
-            return;
-        }
+        const entries = [
+            ...(releaseData.entries || []),
+            ...(releaseData.security || []),
+        ];
 
+        [...new Set(entries)].forEach((suite, index) => {
+            const label = document.createElement("label");
 
-        /*
-         * Regular repository entries
-         *
-         * trixie
-         * trixie-updates
-         * trixie-backports
-         * ...
-         */
+            label.className = "choice-item";
 
-        const entries =
-            releaseData.entries ||
-            [];
+            const input = document.createElement("input");
 
+            input.type = "checkbox";
+            input.name = "suite";
+            input.value = suite;
 
-        /*
-         * Security entries
-         *
-         * trixie-security
-         */
+            input.checked = index === 0;
 
-        const security =
-            releaseData.security ||
-            [];
+            const text = document.createElement("span");
 
+            text.textContent = suite;
 
-        const allSuites =
-            [
-                ...entries,
-                ...security
-            ];
+            label.append(input, text);
 
-
-        allSuites.forEach(
-            (suite, index) => {
-
-                const label =
-                    document.createElement(
-                        "label"
-                    );
-
-
-                label.className =
-                    "generator-checkbox";
-
-
-                const checkbox =
-                    document.createElement(
-                        "input"
-                    );
-
-
-                checkbox.type =
-                    "checkbox";
-
-                checkbox.name =
-                    "suite";
-
-                checkbox.value =
-                    suite;
-
-
-                /*
-                 * First suite selected
-                 * by default.
-                 */
-
-                if (index === 0) {
-
-                    checkbox.checked =
-                        true;
-                }
-
-
-                const text =
-                    document.createElement(
-                        "span"
-                    );
-
-
-                text.textContent =
-                    suite;
-
-
-                label.appendChild(
-                    checkbox
-                );
-
-                label.appendChild(
-                    text
-                );
-
-
-                suitesBox.appendChild(
-                    label
-                );
-            }
-        );
+            dom.suites.appendChild(label);
+        });
     }
 
 
-    /* =========================================================
-       Release Change
-       ========================================================= */
-
-    if (releaseSelect) {
-
-        releaseSelect.addEventListener(
-            "change",
-            () => {
-
-                loadSuites();
-
-                updateReleaseInfo();
-            }
-        );
-    }
-
-
-    /* =========================================================
-       Release Information
-       ========================================================= */
+    // ==========================================
+    // Release information
+    // ==========================================
 
     function updateReleaseInfo() {
+        const releaseData =
+            repositoryData?.suites?.[dom.release?.value];
 
-        const release =
-            releaseSelect?.value;
+        if (!releaseData || !dom.distroInfo) return;
 
+        dom.distroInfo.hidden = false;
 
-        const data =
-            repositoryData
-                ?.suites
-                ?.[
-                    release
-                ];
+        setText(dom.distroAvatar, "D");
+        setText(dom.distroTitle, dom.release.value);
 
+        setText(
+            dom.distroDesc,
+            releaseData.description || "Debian repository configuration"
+        );
 
-        if (!data) {
-            return;
+        if (dom.distroTags) {
+            dom.distroTags.textContent = "";
+
+            const tags = [
+                releaseData.codename,
+                dom.release.value,
+            ].filter(Boolean);
+
+            tags.forEach(tag => {
+                const span = document.createElement("span");
+
+                span.className = "release-tag";
+                span.textContent = tag;
+
+                dom.distroTags.appendChild(span);
+            });
         }
-
-
-        console.log(
-            "Selected release:",
-            release
-        );
-
-
-        console.log(
-            "Codename:",
-            data.codename
-        );
-
-
-        console.log(
-            "Repository:",
-            data.repository
-        );
     }
 
 
-    /* =========================================================
-       Get Checked Values
-       ========================================================= */
+    // ==========================================
+    // Payload
+    // ==========================================
 
-    function getChecked(
-        container
-    ) {
-
-        if (!container) {
-            return [];
-        }
-
-
+    function getChecked(container) {
         return Array.from(
-            container.querySelectorAll(
-                "input[type='checkbox']:checked"
-            )
-        ).map(
-            checkbox =>
-                checkbox.value
-        );
+            container.querySelectorAll("input:checked")
+        ).map(input => input.value);
     }
 
-
-    /* =========================================================
-       Build Payload
-       ========================================================= */
 
     function buildPayload() {
+        const selectedMirror = dom.mirror.value;
 
-        let mirror =
-            mirrorSelect?.value ||
-            "";
-
-
-        /*
-         * Custom mirror
-         */
-
-        if (
-            mirror === "custom"
-        ) {
-
-            mirror =
-                mirrorCustom
-                    ?.value
-                    .trim() ||
-                "";
-        }
-
-
-        const release =
-            releaseSelect?.value ||
-            "";
-
-
-        const components =
-            getChecked(
-                componentsBox
-            );
-
-
-        const suites =
-            getChecked(
-                suitesBox
-            );
-
+        const mirror =
+            selectedMirror === "__custom__"
+                ? dom.mirrorCustom.value.trim()
+                : selectedMirror;
 
         return {
             mirror,
-            release,
-            components,
-            suites
+            release: dom.release.value,
+            components: getChecked(dom.components),
+            suites: getChecked(dom.suites),
         };
     }
 
 
-    /* =========================================================
-       Validation
-       ========================================================= */
-
-    function validatePayload(
-        payload
-    ) {
-
+    function validatePayload(payload) {
         if (!payload.mirror) {
-
-            return {
-                valid: false,
-                message:
-                    "Please select a mirror."
-            };
+            return "Please select or enter a mirror.";
         }
 
+        if (
+            payload.mirror.startsWith("http://") ||
+            payload.mirror.startsWith("https://")
+        ) {
+            // Valid URL scheme.
+        } else {
+            return "Mirror URL must start with http:// or https://.";
+        }
+
+        try {
+            new URL(payload.mirror);
+        } catch {
+            return "Please enter a valid mirror URL.";
+        }
 
         if (!payload.release) {
-
-            return {
-                valid: false,
-                message:
-                    "Please select a release."
-            };
+            return "Please select a Debian release.";
         }
 
-
-        if (
-            payload.components.length === 0
-        ) {
-
-            return {
-                valid: false,
-                message:
-                    "Select at least one component."
-            };
+        if (!payload.components.length) {
+            return "Select at least one component.";
         }
 
-
-        if (
-            payload.suites.length === 0
-        ) {
-
-            return {
-                valid: false,
-                message:
-                    "Select at least one suite."
-            };
+        if (!payload.suites.length) {
+            return "Select at least one repository suite.";
         }
 
-
-        return {
-            valid: true
-        };
+        return null;
     }
 
 
-    /* =========================================================
-       Generate
-       ========================================================= */
+    // ==========================================
+    // Generate
+    // ==========================================
 
     async function generate() {
+        if (isGenerating) return;
 
-        if (isGenerating) {
+        const payload = buildPayload();
+
+        const validationError = validatePayload(payload);
+
+        if (validationError) {
+            showOutputError(validationError);
             return;
         }
 
+        isGenerating = true;
 
-        const payload =
-            buildPayload();
+        setLoading(dom.generate, true, "Generating...");
 
-
-        const validation =
-            validatePayload(
-                payload
-            );
-
-
-        if (!validation.valid) {
-
-            showError(
-                validation.message
-            );
-
-            return;
+        if (dom.pasteShare) {
+            dom.pasteShare.hidden = true;
         }
-
-
-        setLoading(true);
-
-
-        setOutput(
-            "# Generating sources.list...\n" +
-            "# Please wait..."
-        );
-
 
         try {
+            const data = await request(API.generate, {
+                method: "POST",
+                body: JSON.stringify(payload),
+            });
 
-            const data =
-                await request(
-                    API.generate,
-                    {
-                        method: "POST",
-
-                        headers: {
-                            "Content-Type":
-                                "application/json"
-                        },
-
-                        body:
-                            JSON.stringify(
-                                payload
-                            )
-                    }
-                );
-
-
-            /*
-             * Backend:
-             *
-             * {
-             *     "format": "sources.list",
-             *     "content": "..."
-             * }
-             */
-
-
-            if (data.error) {
-
-                throw new Error(
-                    data.error
-                );
+            if (!data.content) {
+                throw new Error("The server returned an empty configuration.");
             }
 
+            lastFilename = getFileName(data.format);
 
-            const content =
-                data.content ||
-                "";
+            setOutput(data.content);
 
-
-            if (!content) {
-
-                throw new Error(
-                    "Backend returned an empty result."
-                );
-            }
-
-
-            setOutput(
-                content
-            );
-
-
-            lastFilename =
-                data.format ||
-                "sources.list";
-
-
-        } catch (error) {
-
-            showError(
-                error.message
-            );
-
-        } finally {
-
-            setLoading(false);
-        }
-    }
-
-
-    if (generateBtn) {
-
-        generateBtn.addEventListener(
-            "click",
-            generate
-        );
-    }
-
-
-    /* =========================================================
-       Copy
-       ========================================================= */
-
-    function flashSuccess(
-        button,
-        text
-    ) {
-
-        if (!button) return;
-
-
-        const original =
-            button.innerHTML;
-
-
-        button.textContent =
-            text;
-
-
-        button.classList.add(
-            "success"
-        );
-
-
-        setTimeout(
-            () => {
-
-                button.innerHTML =
-                    original;
-
-                button.classList.remove(
-                    "success"
-                );
-
-            },
-            1400
-        );
-    }
-
-
-    if (copyBtn) {
-
-        copyBtn.addEventListener(
-            "click",
-            async () => {
-
-                const text =
-                    output?.textContent
-                        ?.trim();
-
-
-                if (!text) {
-                    return;
-                }
-
-
-                try {
-
-                    await navigator
-                        .clipboard
-                        .writeText(
-                            text
-                        );
-
-
-                    flashSuccess(
-                        copyBtn,
-                        "Copied!"
-                    );
-
-                } catch {
-
-                    /*
-                     * Fallback
-                     */
-
-                    const range =
-                        document.createRange();
-
-
-                    range.selectNode(
-                        output
-                    );
-
-
-                    const selection =
-                        window.getSelection();
-
-
-                    selection
-                        .removeAllRanges();
-
-
-                    selection.addRange(
-                        range
-                    );
-
-
-                    flashSuccess(
-                        copyBtn,
-                        "Selected!"
-                    );
-                }
-            }
-        );
-    }
-
-
-    /* =========================================================
-       Download
-       ========================================================= */
-
-    if (downloadBtn) {
-
-        downloadBtn.addEventListener(
-            "click",
-            () => {
-
-                const text =
-                    output?.textContent
-                        ?.trim();
-
-
-                if (!text) {
-                    return;
-                }
-
-
-                const blob =
-                    new Blob(
-                        [text],
-                        {
-                            type:
-                                "text/plain;charset=utf-8"
-                        }
-                    );
-
-
-                const url =
-                    URL.createObjectURL(
-                        blob
-                    );
-
-
-                const link =
-                    document.createElement(
-                        "a"
-                    );
-
-
-                link.href =
-                    url;
-
-
-                link.download =
-                    lastFilename ||
-                    "sources.list";
-
-
-                document.body.appendChild(
-                    link
-                );
-
-
-                link.click();
-
-
-                link.remove();
-
-
-                URL.revokeObjectURL(
-                    url
-                );
-
-
-                flashSuccess(
-                    downloadBtn,
-                    "Saved!"
-                );
-            }
-        );
-    }
-
-
-    /* =========================================================
-       Keyboard Shortcut
-       ========================================================= */
-
-    document.addEventListener(
-        "keydown",
-        event => {
-
-            if (
-                (event.ctrlKey ||
-                    event.metaKey) &&
-                event.key === "Enter"
-            ) {
-
-                event.preventDefault();
-
-                generate();
-            }
-        }
-    );
-
-
-    /* =========================================================
-       Load Repository Data
-       ========================================================= */
-
-    async function loadRepositoryData() {
-
-        try {
-
-            setOutput(
-                "# Connecting to Repository Generator API..."
-            );
-
-
-            /*
-             * GET
-             *
-             * /repository_data
-             */
-
-            repositoryData =
-                await request(
-                    API.options
-                );
-
-
-            /*
-             * Fill everything
-             */
-
-            loadMirrors();
-
-            loadReleases();
-
-            loadComponents();
-
-            loadSuites();
+            setText(dom.outputFilename, lastFilename);
 
             updateReleaseInfo();
 
-
-            setOutput(
-                "# Repository data loaded successfully.\n" +
-                "# Configure your options and click Generate."
-            );
-
-
         } catch (error) {
+            showOutputError(error.message);
 
-            showError(
-                error.message
-            );
+        } finally {
+            isGenerating = false;
+
+            setLoading(dom.generate, false);
         }
     }
 
 
-    /* =========================================================
-       API Health Check
-       ========================================================= */
+    // ==========================================
+    // Clipboard
+    // ==========================================
 
-    async function checkAPI() {
+    async function copyText(content) {
+        if (!content) return false;
 
         try {
+            await navigator.clipboard.writeText(content);
 
-            const response =
-                await fetch(
-                    `${API.baseURL}/`,
-                    {
-                        method: "GET"
-                    }
-                );
-
-
-            return response.ok;
+            return true;
 
         } catch {
+            const textarea = document.createElement("textarea");
 
-            return false;
+            textarea.value = content;
+
+            textarea.style.position = "fixed";
+            textarea.style.opacity = "0";
+
+            document.body.appendChild(textarea);
+
+            textarea.select();
+
+            const success = document.execCommand("copy");
+
+            textarea.remove();
+
+            return success;
         }
     }
 
 
-    /* =========================================================
-       Initialize
-       ========================================================= */
+    async function copyOutput() {
+        const success = await copyText(lastContent);
 
-    async function initialize() {
-
-        /*
-         * Theme
-         */
-
-        initializeTheme();
+        if (success) {
+            flashSuccess(dom.copy, "Copied!");
+        }
+    }
 
 
-        /*
-         * Check FastAPI
-         */
+    // ==========================================
+    // Download
+    // ==========================================
 
-        const connected =
-            await checkAPI();
+    function downloadText(content, filename) {
+        if (!content) return;
+
+        const blob = new Blob(
+            [content],
+            { type: "text/plain;charset=utf-8" }
+        );
+
+        const url = URL.createObjectURL(blob);
+
+        const anchor = document.createElement("a");
+
+        anchor.href = url;
+        anchor.download = filename;
+
+        document.body.appendChild(anchor);
+
+        anchor.click();
+
+        anchor.remove();
+
+        URL.revokeObjectURL(url);
+    }
 
 
-        if (!connected) {
+    function downloadOutput() {
+        downloadText(lastContent, lastFilename);
+    }
 
-            showError(
-                "FastAPI is not running.\n\n" +
-                "Start it with:\n" +
-                "uvicorn main:app --reload"
+
+    // ==========================================
+    // Paste creation
+    // ==========================================
+
+    async function createPaste() {
+        if (isCreatingPaste || !lastContent) return;
+
+        isCreatingPaste = true;
+
+        setLoading(dom.sharePaste, true, "Creating paste...");
+
+        if (dom.pasteShare) {
+            dom.pasteShare.hidden = true;
+        }
+
+        try {
+            const data = await request(
+                API.paste,
+                {
+                    method: "POST",
+                    body: JSON.stringify({
+                        content: lastContent,
+                        format: lastFilename,
+                    }),
+                }
             );
 
+            if (!data.id || !data.url || !data.expires_at) {
+                throw new Error("Invalid response from paste server.");
+            }
+
+            const fullURL = new URL(
+                data.url,
+                window.location.origin
+            ).href;
+
+            dom.pasteURL.value = fullURL;
+
+            setText(
+                dom.pasteExpiration,
+                `Expires: ${formatDate(data.expires_at)} · Available for two hours`
+            );
+
+            dom.pasteShare.hidden = false;
+
+            dom.pasteShare.scrollIntoView({
+                behavior: "smooth",
+                block: "nearest",
+            });
+
+        } catch (error) {
+            alert(`Unable to create paste: ${error.message}`);
+
+        } finally {
+            isCreatingPaste = false;
+
+            setLoading(dom.sharePaste, false);
+        }
+    }
+
+
+    async function copyPasteURL() {
+        const success = await copyText(dom.pasteURL.value);
+
+        if (success) {
+            flashSuccess(dom.copyPasteURL, "Copied!");
+        }
+    }
+
+
+    // ==========================================
+    // Paste viewer
+    // ==========================================
+
+    function showPasteError(message) {
+        if (dom.pasteError) {
+            dom.pasteError.hidden = false;
+        }
+
+        setText(dom.pasteErrorMessage, message);
+
+        if (dom.pasteContent) {
+            dom.pasteContent.textContent = "";
+        }
+
+        if (dom.pasteCopy) {
+            dom.pasteCopy.disabled = true;
+        }
+
+        if (dom.pasteDownload) {
+            dom.pasteDownload.disabled = true;
+        }
+    }
+
+
+    async function loadPaste(pasteId) {
+        showView("paste");
+
+        setText(dom.pasteContent, "Loading paste...");
+
+        try {
+            const data = await request(
+                `${API.baseURL}/paste/${encodeURIComponent(pasteId)}`
+            );
+
+            if (!data.content) {
+                throw new Error("This paste contains no content.");
+            }
+
+            pasteContent = data.content;
+
+            pasteFilename = getFileName(data.format);
+
+            if (dom.pasteError) {
+                dom.pasteError.hidden = true;
+            }
+
+            setText(dom.pasteContent, data.content);
+
+            setText(dom.pasteFormat, data.format);
+            setText(dom.pasteFilename, pasteFilename);
+
+            setText(
+                dom.pasteViewExpiration,
+                formatDate(data.expires_at)
+            );
+
+            dom.pasteCopy.disabled = false;
+            dom.pasteDownload.disabled = false;
+
+            document.title = `${pasteFilename} — SourcesList`;
+
+        } catch (error) {
+            pasteContent = "";
+
+            if (error.status === 404) {
+                showPasteError(
+                    "This paste could not be found or has expired."
+                );
+            } else if (error.status === 422) {
+                showPasteError(
+                    "The paste ID is invalid."
+                );
+            } else {
+                showPasteError(error.message);
+            }
+        }
+    }
+
+
+    async function copyPasteContent() {
+        const success = await copyText(pasteContent);
+
+        if (success) {
+            flashSuccess(dom.pasteCopy, "Copied!");
+        }
+    }
+
+
+    function downloadPasteContent() {
+        downloadText(pasteContent, pasteFilename);
+    }
+
+
+    // ==========================================
+    // Initialize Generator
+    // ==========================================
+
+    async function loadRepositoryData() {
+        const data = await request(
+            API.options
+        );
+
+        repositoryData = data;
+
+        loadMirrors();
+        loadReleases();
+        loadComponents();
+        loadSuites();
+
+        updateReleaseInfo();
+    }
+
+
+    function bindEvents() {
+        dom.themeToggle?.addEventListener(
+            "click",
+            toggleTheme
+        );
+
+        dom.mirror?.addEventListener(
+            "change",
+            handleMirrorChange
+        );
+
+        dom.release?.addEventListener(
+            "change",
+            () => {
+                loadSuites();
+                updateReleaseInfo();
+            }
+        );
+
+        dom.generate?.addEventListener(
+            "click",
+            generate
+        );
+
+        dom.copy?.addEventListener(
+            "click",
+            copyOutput
+        );
+
+        dom.download?.addEventListener(
+            "click",
+            downloadOutput
+        );
+
+        dom.sharePaste?.addEventListener(
+            "click",
+            createPaste
+        );
+
+        dom.copyPasteURL?.addEventListener(
+            "click",
+            copyPasteURL
+        );
+
+        dom.pasteCopy?.addEventListener(
+            "click",
+            copyPasteContent
+        );
+
+        dom.pasteDownload?.addEventListener(
+            "click",
+            downloadPasteContent
+        );
+
+        document.addEventListener("keydown", event => {
+            if (
+                (event.ctrlKey || event.metaKey) &&
+                event.key === "Enter"
+            ) {
+                if (!getPasteId()) {
+                    generate();
+                }
+            }
+        });
+    }
+
+
+    // ==========================================
+    // Main
+    // ==========================================
+
+    async function initialize() {
+        initializeTheme();
+
+        bindEvents();
+
+        const pasteId = getPasteId();
+
+        if (pasteId) {
+            await loadPaste(pasteId);
             return;
         }
 
+        showView("generator");
 
-        /*
-         * Load JSON
-         */
+        try {
+            await loadRepositoryData();
 
-        await loadRepositoryData();
+        } catch (error) {
+            showOutputError(
+                `Unable to load repository data: ${error.message}`
+            );
+        }
     }
 
-
-    /* =========================================================
-       START
-       ========================================================= */
 
     initialize();
 

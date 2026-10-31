@@ -1,193 +1,531 @@
+
 <!DOCTYPE html>
-<html lang="en">
-
+<html lang="en" data-theme="dark">
 <head>
-
     <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
 
     <meta
-        name="viewport"
-        content="width=device-width, initial-scale=1.0"
+        name="description"
+        content="Generate and share Debian APT repository configurations."
     >
 
-    <title>Repository Generator</title>
+    <meta name="theme-color" content="#171717">
+
+    <title>SourcesList — Debian Repository Generator</title>
 
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+
     <link
-        href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@500;600;700&family=Inter:wght@400;500;600;700&display=swap"
+        href="https://fonts.googleapis.com/css2?family=DM+Mono:wght@400;500&family=DM+Sans:wght@400;500;600;700&display=swap"
         rel="stylesheet"
     >
 
-    <link
-        rel="stylesheet"
-        href="style.css"
-    >
-
+    <link rel="stylesheet" href="/style.css">
 </head>
-
 
 <body>
 
-    <div class="bg-decor" aria-hidden="true">
-        <span class="orb orb-1"></span>
-        <span class="orb orb-2"></span>
-    </div>
+    <div class="app-shell">
 
-    <div class="shell">
-
+        <!-- Header -->
         <header class="topbar">
 
-            <div class="brand">
-                <span class="brand-mark">R</span>
-                <span class="brand-text">Repo<strong>Gen</strong></span>
-            </div>
+            <a href="/" class="brand" aria-label="SourcesList home">
+                <span class="brand-mark">S</span>
 
-            <button
-                id="theme-toggle"
-                class="theme-toggle"
-                type="button"
-                aria-label="Toggle color theme"
-                title="Toggle color theme"
-            >
-                <svg class="icon-sun" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" width="18" height="18">
-                    <circle cx="12" cy="12" r="4"></circle>
-                    <path d="M12 2v2M12 20v2M4.93 4.93l1.41 1.41M17.66 17.66l1.41 1.41M2 12h2M20 12h2M6.34 17.66l-1.41 1.41M19.07 4.93l-1.41 1.41"></path>
-                </svg>
-                <svg class="icon-moon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" width="18" height="18">
-                    <path d="M21 12.79A9 9 0 1 1 11.21 3 7 7 0 0 0 21 12.79Z"></path>
-                </svg>
-            </button>
+                <span class="brand-name">
+                    Sources<span>List</span>
+                </span>
+            </a>
+
+            <div class="header-right">
+
+                <span class="system-label">
+                    <span class="status-dot"></span>
+                    DEBIAN APT TOOL
+                </span>
+
+                <button
+                    type="button"
+                    id="theme-toggle"
+                    class="icon-button"
+                    aria-label="Toggle color theme"
+                    title="Toggle theme"
+                >
+                    <span class="theme-icon">☼</span>
+                </button>
+
+            </div>
 
         </header>
 
-        <p class="lede">
-            Generate APT repository configuration for Debian-based distributions.
-        </p>
 
-        <div class="layout">
+        <!-- Main -->
+        <main class="main-content">
 
-            <aside class="panel form-panel">
+            <!-- Page introduction -->
+            <section class="intro">
 
-                <div class="panel-label">Configuration</div>
+                <div class="eyebrow">
+                    <span class="eyebrow-line"></span>
+                    REPOSITORY CONFIGURATION
+                </div>
 
-                <label for="mirror">
-                    Mirror
-                </label>
+                <h1>
+                    Build your
+                    <span class="heading-accent">sources.list.</span>
+                </h1>
 
-                <select id="mirror"></select>
+                <p>
+                    Configure Debian package repositories.
+                    Generate, copy, download, or share your configuration.
+                </p>
 
-                <input
-                    type="text"
-                    id="mirror-custom"
-                    class="hidden"
-                    placeholder="e.g. mirror.example.org"
-                    autocomplete="off"
-                >
+            </section>
 
-                <label for="release">
-                    Release
-                </label>
 
-                <select id="release"></select>
+            <!-- Generator view -->
+            <section id="generator-view" class="page-view">
 
-                <label>
-                    Components
-                </label>
+                <div class="workspace">
 
-                <div
-                    id="components"
-                    class="checkbox-group"
-                ></div>
+                    <!-- Configuration panel -->
+                    <section class="panel config-panel">
 
-                <label>
-                    Suites
-                </label>
+                        <div class="panel-heading">
 
-                <div
-                    id="suites"
-                    class="checkbox-group"
-                ></div>
+                            <div>
+                                <span class="section-index">01 / CONFIGURE</span>
+                                <h2>Repository settings</h2>
+                            </div>
 
-                <label for="format">
-                    Format
-                </label>
+                            <span class="panel-icon">⚙</span>
 
-                <select id="format">
+                        </div>
 
-                    <option value="sources.list">
-                        sources.list
-                    </option>
 
-                    <option value="debian.sources">
-                        debian.sources
-                    </option>
+                        <div class="form-content">
 
-                </select>
+                            <!-- Mirror -->
+                            <div class="field-group">
 
-                <button id="generate">
-                    Generate
-                </button>
+                                <label for="mirror">
+                                    Repository mirror
+                                </label>
 
-            </aside>
+                                <select id="mirror" name="mirror">
+                                </select>
 
-            <section class="panel main-panel">
+                                <input
+                                    type="url"
+                                    id="mirror-custom"
+                                    name="mirror-custom"
+                                    placeholder="https://mirror.example.com/debian"
+                                    autocomplete="url"
+                                    hidden
+                                >
 
-                <div id="distro-info" class="distro-info hidden">
+                                <p class="field-hint">
+                                    Select an official mirror or provide a custom URL.
+                                </p>
 
-                    <div class="distro-info-head">
+                            </div>
 
-                        <div class="distro-avatar" id="distro-avatar">?</div>
+
+                            <!-- Release -->
+                            <div class="field-group">
+
+                                <label for="release">
+                                    Debian release
+                                </label>
+
+                                <select id="release" name="release">
+                                </select>
+
+                            </div>
+
+
+                            <!-- Components -->
+                            <div class="field-group">
+
+                                <div class="field-heading">
+                                    <label>Components</label>
+                                    <span class="field-meta">PACKAGE SECTIONS</span>
+                                </div>
+
+                                <div
+                                    id="components"
+                                    class="choice-list"
+                                >
+                                </div>
+
+                            </div>
+
+
+                            <!-- Suites -->
+                            <div class="field-group">
+
+                                <div class="field-heading">
+                                    <label>Repository suites</label>
+                                    <span class="field-meta">RELEASE CHANNELS</span>
+                                </div>
+
+                                <div
+                                    id="suites"
+                                    class="choice-list"
+                                >
+                                </div>
+
+                            </div>
+
+
+                            <!-- Format -->
+                            <div class="field-group">
+
+                                <label for="format">
+                                    Configuration format
+                                </label>
+
+                                <select id="format" name="format">
+                                    <option value="sources.list">
+                                        sources.list
+                                    </option>
+
+                                    <option value="debian.sources">
+                                        debian.sources
+                                    </option>
+                                </select>
+
+                                <p class="field-hint">
+                                    Output format selection.
+                                </p>
+
+                            </div>
+
+
+                            <!-- Generate -->
+                            <button
+                                type="button"
+                                id="generate"
+                                class="primary-button"
+                            >
+                                <span>Generate configuration</span>
+                                <span class="button-arrow">→</span>
+                            </button>
+
+                        </div>
+
+                    </section>
+
+
+                    <!-- Output panel -->
+                    <section class="panel output-panel">
+
+                        <div class="panel-heading output-heading">
+
+                            <div>
+                                <span class="section-index">02 / OUTPUT</span>
+                                <h2>Generated configuration</h2>
+                            </div>
+
+                            <span class="output-status">
+                                <span class="status-dot"></span>
+                                READY
+                            </span>
+
+                        </div>
+
+
+                        <!-- Release information -->
+                        <div
+                            id="distro-info"
+                            class="release-info"
+                            hidden
+                        >
+
+                            <div
+                                id="distro-avatar"
+                                class="release-avatar"
+                            >
+                            </div>
+
+                            <div class="release-details">
+
+                                <h3 id="distro-title"></h3>
+
+                                <p id="distro-desc"></p>
+
+                                <div id="distro-tags"></div>
+
+                            </div>
+
+                        </div>
+
+
+                        <!-- Code toolbar -->
+                        <div class="code-toolbar">
+
+                            <div class="code-file">
+
+                                <span class="file-indicator"></span>
+
+                                <span id="output-filename">
+                                    sources.list
+                                </span>
+
+                            </div>
+
+                            <div class="actions">
+
+                                <button
+                                    type="button"
+                                    id="copy"
+                                    class="secondary-button"
+                                    disabled
+                                >
+                                    Copy
+                                </button>
+
+                                <button
+                                    type="button"
+                                    id="download"
+                                    class="secondary-button"
+                                    disabled
+                                >
+                                    Download
+                                </button>
+
+                            </div>
+
+                        </div>
+
+
+                        <!-- Code output -->
+                        <div class="code-container">
+
+                            <div class="line-gutter" aria-hidden="true">
+                                <span>01</span>
+                            </div>
+
+                            <pre
+                                id="output"
+                                class="code-output"
+                                aria-live="polite"
+                                aria-label="Generated repository configuration"
+                            ><span class="placeholder-comment"># Your generated configuration will appear here.</span>
+# Select your repository settings and generate.</pre>
+
+                        </div>
+
+
+                        <!-- Share section -->
+                        <section
+                            id="paste-share"
+                            class="paste-share"
+                            hidden
+                        >
+
+                            <div class="share-heading">
+                                <span class="share-icon">↗</span>
+
+                                <div>
+                                    <h3>Paste created</h3>
+                                    <p>Your configuration is ready to share.</p>
+                                </div>
+                            </div>
+
+                            <div class="share-link-row">
+
+                                <input
+                                    type="url"
+                                    id="paste-url"
+                                    readonly
+                                    aria-label="Paste share URL"
+                                >
+
+                                <button
+                                    type="button"
+                                    id="copy-paste-url"
+                                    class="secondary-button"
+                                >
+                                    Copy link
+                                </button>
+
+                            </div>
+
+                            <p id="paste-expiration" class="expiration-info">
+                                This paste expires after two hours.
+                            </p>
+
+                        </section>
+
+
+                        <!-- Output footer -->
+                        <div class="output-footer">
+
+                            <button
+                                type="button"
+                                id="share-paste"
+                                class="share-button"
+                                disabled
+                            >
+                                <span>↗</span>
+                                Share as Paste
+                            </button>
+
+                            <span class="footer-note">
+                                Generated locally · Shared only on request
+                            </span>
+
+                        </div>
+
+                    </section>
+
+                </div>
+
+            </section>
+
+
+            <!-- Paste viewer -->
+            <section
+                id="paste-view"
+                class="page-view paste-view"
+                hidden
+            >
+
+                <div class="paste-back-row">
+
+                    <a href="/" id="back-to-generator" class="back-link">
+                        <span>←</span>
+                        Back to generator
+                    </a>
+
+                    <span class="section-index">SHARED CONFIGURATION</span>
+
+                </div>
+
+
+                <section class="panel paste-panel">
+
+                    <div class="panel-heading">
 
                         <div>
-                            <div class="distro-eyebrow">Selected distribution</div>
-                            <h3 id="distro-title">—</h3>
+                            <span class="section-index">PASTE / READ ONLY</span>
+                            <h2>Shared configuration</h2>
+                        </div>
+
+                        <span class="readonly-badge">
+                            READ ONLY
+                        </span>
+
+                    </div>
+
+
+                    <div class="paste-metadata">
+
+                        <div class="metadata-item">
+                            <span class="metadata-label">FORMAT</span>
+                            <span id="paste-format">—</span>
+                        </div>
+
+                        <div class="metadata-item">
+                            <span class="metadata-label">EXPIRES AT</span>
+                            <span id="paste-view-expiration">—</span>
                         </div>
 
                     </div>
 
-                    <div id="distro-desc" class="distro-desc"></div>
 
-                    <div id="distro-tags" class="distro-tags"></div>
+                    <div class="code-toolbar">
 
-                </div>
+                        <div class="code-file">
+                            <span class="file-indicator"></span>
+                            <span id="paste-filename">sources.list</span>
+                        </div>
 
-                <div class="result-head">
+                        <div class="actions">
 
-                    <h2>Generated Configuration</h2>
+                            <button
+                                type="button"
+                                id="paste-copy"
+                                class="secondary-button"
+                                disabled
+                            >
+                                Copy
+                            </button>
 
-                    <div class="actions">
+                            <button
+                                type="button"
+                                id="paste-download"
+                                class="secondary-button"
+                                disabled
+                            >
+                                Download
+                            </button>
 
-                        <button id="copy" type="button">
-                            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" width="14" height="14">
-                                <rect x="9" y="9" width="12" height="12" rx="2"></rect>
-                                <path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"></path>
-                            </svg>
-                            Copy
-                        </button>
-
-                        <button id="download" type="button">
-                            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" width="14" height="14">
-                                <path d="M12 3v12m0 0-4-4m4 4 4-4"></path>
-                                <path d="M4 19h16"></path>
-                            </svg>
-                            Download
-                        </button>
+                        </div>
 
                     </div>
 
-                </div>
 
-                <pre id="output"></pre>
+                    <div class="code-container paste-code-container">
+
+                        <div class="line-gutter" aria-hidden="true">
+                            <span>01</span>
+                        </div>
+
+                        <pre
+                            id="paste-content"
+                            class="code-output"
+                            aria-label="Shared repository configuration"
+                        >Loading paste...</pre>
+
+                    </div>
+
+
+                    <div
+                        id="paste-error"
+                        class="paste-error"
+                        hidden
+                    >
+                        <span class="error-symbol">!</span>
+
+                        <div>
+                            <h3>Paste unavailable</h3>
+                            <p id="paste-error-message">
+                                This paste could not be found or has expired.
+                            </p>
+                        </div>
+                    </div>
+
+                </section>
 
             </section>
 
-        </div>
+        </main>
+
+
+        <!-- Footer -->
+        <footer class="site-footer">
+
+            <span>
+                SOURCESLIST
+                <span class="footer-separator">/</span>
+                DEBIAN REPOSITORY GENERATOR
+            </span>
+
+            <span>
+                Built for Debian
+            </span>
+
+        </footer>
 
     </div>
 
-    <script src="app.js"></script>
+
+    <script src="/app.js"></script>
 
 </body>
-
 </html>

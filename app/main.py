@@ -5,16 +5,13 @@ FastAPI application for validating Debian repository
 configuration options and generating sources.list content.
 """
 
-# Python's built-in library for working with JSON.
 import json
 
 from fastapi import FastAPI , HTTPException
 from fastapi.middleware.cors import CORSMiddleware
-
-# Used for data validation.
 from pydantic import BaseModel
 
-# Using our own file(generator.py)
+from .paste.database import create_table
 from .generator import generate
 from .validator import (
     valid_components,
@@ -22,9 +19,16 @@ from .validator import (
     valid_release,
     valid_suites,
 )
+
 from pathlib import Path
 
+
 app = FastAPI()
+
+@app.on_event("startup")
+def startup():
+    create_table
+
 app.add_middleware(
     CORSMiddleware,
     allow_origins=["*"],

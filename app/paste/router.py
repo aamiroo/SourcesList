@@ -11,7 +11,7 @@ from .schemas import PasteCreate , PasteResponse
 router = APIRouter(prefix="/paste" , tags=["Paste"])
 
 def get_db ():
-    db = get_session_local()
+    db = get_session_local()()
     try:
         yield db
     finally:

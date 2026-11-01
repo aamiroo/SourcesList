@@ -527,6 +527,7 @@
             release: dom.release.value,
             components: getChecked(dom.components),
             suites: getChecked(dom.suites),
+            format: dom.format?.value || "sources.list",
         };
     }
 

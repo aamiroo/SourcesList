@@ -12,10 +12,11 @@ from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import FileResponse
 from fastapi.staticfiles import StaticFiles
 from pydantic import BaseModel
+from typing import Literal
 
 from .paste.database import create_table
 from .paste.router import router as paste_router
-from .generator import generate
+from .generator import generate , generate_modern
 from .validator import (
     valid_components,
     valid_mirror,
@@ -53,6 +54,7 @@ class RepositoryRequest(BaseModel):
     release: str
     components: list[str]
     suites: list[str]
+    format: Literal["sources.list" ,"debian.sources"] = "sources.list"
 
 
 @app.get("/api/health")
@@ -119,6 +121,10 @@ def generator(data: RepositoryRequest):
     )
     lines = []
 
+    repositories ={}
+
+
+
     for suite in data.suites:
         mirror = (
             security_mirror
@@ -126,18 +132,30 @@ def generator(data: RepositoryRequest):
             else data.mirror
         )
         
-        content = generate(
-            mirror=mirror,
-            components=data.components,
-            suites=[suite],
-        )
+        repositories.setdefault(mirror,[]).append(suite)
+
+    for mirror, suites in repositories.items():
+
+        if data.format == "debian.sources":
+            content = generate_modern(
+                mirror=mirror,
+                components=data.components,
+                suites=suites,
+            )
+        else:
+            content = generate(
+                mirror=mirror,
+                components=data.components,
+                suites=suites,
+            )
+
         lines.append(content)
 
-    content = "\n".join(lines)
-    
+
+    separator = "\n\n" if data.format == "debian.sources" else "\n"
     return {
-        "format": "sources.list",
-        "content": content
+        "format": data.format,
+        "content": separator.join(lines),
     }
 
 

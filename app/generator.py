@@ -25,3 +25,25 @@ def generate(
         lines.append(line)
 
     return "\n".join(lines)
+
+def generate_modern(
+        mirror: str,
+        components: list[str],
+        suites: list[str],
+)->str:
+    if not mirror.strip():
+        raise ValueError ("mirror cannot be emty")
+    if not components:
+        raise ValueError ("At least one component is required")
+    if not suites:
+        raise ValueError ("At least one component is required")
+
+    lines = [
+        "Type: deb",
+        f"URIs: {mirror}",
+        f"Suites: {' '.join(suites)}",
+        f"Components: {' '.join(components)}",
+        "Signed-By: /usr/share/keyrings/debian-archive-keyring.gpg"
+    ]
+
+    return "\n".join(lines)

@@ -1,296 +1,267 @@
 # Sources List Generator
 
-A modern and intuitive web application for generating APT repository configuration files for Debian-based Linux distributions.
+A web-based application for generating APT repository configuration files for Debian-based Linux distributions.
 
-## Overview
-
-**Sources List Generator** makes it easier to create valid APT repository configurations without manually writing repository entries.
-
-Users can select a Debian release, repository mirror, components, and update suites through a simple web interface. The application then generates the corresponding APT configuration, which can be copied to the clipboard or downloaded as a file.
-
-The project supports both the traditional `sources.list` format and the modern `debian.sources` (Deb822) format.
+Sources List Generator provides a simple interface for configuring repository mirrors, distributions, components, and update suites. It validates the selected options and generates ready-to-use APT configuration files in both traditional `sources.list` and modern Deb822 (`debian.sources`) formats.
 
 ## Features
 
-### Current Features
-
-* Generate APT `sources.list` configuration
-* Generate `debian.sources` configuration
-* Debian repository support
-* Select Debian release
-* Select official Debian mirrors
-* Support for custom mirrors
-* Select repository components
-* Select repository suites and update channels
-* Debian security repositories
-* Debian backports and proposed-updates support where available
-* Copy generated configuration to clipboard
-* Download generated configuration
-* Light and dark theme
-* Automatic loading of repository information from JSON
-* Backend validation of releases, components, mirrors, and suites
-* REST API powered by FastAPI
-
-## Supported Repository Data
-
-Repository information is stored in `backend/repository_data.json`.
-
-The data includes:
-
-* Debian releases and codenames
-* Official Debian repository mirrors
-* Security repositories
-* Debug repositories
-* Repository components
-* Available repository suites
-* Deb822 configuration information
-* Legacy `sources.list` format information
-
-Keeping repository metadata separate from the application logic makes it easier to update repository information in the future.
+- Generate traditional `sources.list` configuration files.
+- Generate modern Deb822 (`debian.sources`) configuration files.
+- Debian repository support.
+- Select Debian releases and codenames.
+- Choose official Debian mirrors or provide custom mirrors.
+- Select repository components.
+- Configure repository suites and update channels.
+- Support for Debian security repositories.
+- Support for backports and proposed updates where available.
+- Preview generated configurations.
+- Copy generated configurations to the clipboard.
+- Download generated configuration files.
+- Publish generated APT configurations as shareable Pastebin links.
+- Light and dark themes.
+- Load repository metadata from a separate JSON file.
+- Backend-side validation of repository configuration.
+- REST API powered by FastAPI.
+- PostgreSQL database integration.
+- Containerized deployment using Docker or Podman Compose.
 
 ## Tech Stack
 
 ### Backend
 
-* **Python**
-* **FastAPI**
-* **Pydantic**
-* **Uvicorn**
-* **JSON**
-
-The backend provides the API endpoints used by the frontend and validates user-provided repository configuration before generating the final output.
+- **Python 3.13**
+- **FastAPI** — REST API framework.
+- **Pydantic** — request validation and data schemas.
+- **SQLAlchemy** — database interaction and ORM.
+- **PostgreSQL** — relational database.
+- **Uvicorn** — ASGI application server.
+- **uv** — Python dependency and project management.
 
 ### Frontend
 
-* **HTML5**
-* **CSS3**
-* **Vanilla JavaScript**
-* **Fetch API**
-* **Browser Clipboard API**
-* **Browser Local Storage**
+- **HTML5**
+- **CSS3**
+- **Vanilla JavaScript**
+- **Fetch API**
+- **Browser Clipboard API**
+- **Browser Local Storage**
 
-The frontend provides the configuration interface, communicates with the FastAPI backend, displays generated repository configurations, and provides copy/download functionality.
+### Infrastructure
 
-## API
+- **Docker / Podman**
+- **Docker Compose / Podman Compose**
+- **PostgreSQL 17**
+- **Multi-stage Docker build**
 
-The FastAPI backend exposes the following main endpoints:
+## Architecture
 
-### `GET /`
+The application consists of three main parts:
 
-Returns a basic API status message.
+1. **Frontend:** Provides the user interface and sends configuration requests to the backend.
+2. **Backend:** Validates configuration options, processes requests, and generates APT repository files.
+3. **Database:** PostgreSQL provides persistent relational data storage.
 
-### `GET /repository_data`
+The repository metadata is maintained separately from the application logic, allowing repository information to be updated without mixing it with the configuration-generation code.
 
-Returns the repository configuration data used by the frontend.
+## Requirements
 
-### `POST /generator`
+### Recommended: Containerized Setup
 
-Generates an APT repository configuration from the selected options.
+For the easiest setup, use one of the following:
 
-Example request:
+- Docker Engine with Docker Compose.
+- Podman with Podman Compose.
 
-```json
-{
-  "mirror": "https://deb.debian.org/debian",
-  "release": "stable",
-  "components": [
-    "main",
-    "contrib",
-    "non-free"
-  ],
-  "suites": [
-    "release",
-    "updates"
-  ]
-}
-```
+You also need Git to clone the repository.
 
-The backend validates the requested release, components, suites, and mirror before generating the configuration.
+### Local Development
 
-## Project Structure
+For running the application directly on your machine:
 
-```text
-SourcesList/
-│
-├── backend/
-│   ├── main.py
-│   ├── generator.py
-│   ├── validator.py
-│   └── repository_data.json
-│
-├── frontend/
-│   ├── index.html
-│   ├── app.js
-│   └── style.css
-│
-└── README.md
-```
+- Python 3.13 or newer.
+- `uv`.
+- PostgreSQL 17 or a compatible PostgreSQL version.
+- A modern web browser.
 
-### Backend Files
-
-#### `main.py`
-
-Defines the FastAPI application and API endpoints.
-
-Responsibilities include:
-
-* Starting the API application
-* Enabling CORS
-* Loading repository data
-* Defining request models
-* Validating repository configuration
-* Calling the configuration generator
-
-#### `generator.py`
-
-Contains the logic responsible for generating APT repository entries from the selected configuration.
-
-#### `validator.py`
-
-Validates:
-
-* Debian releases
-* Repository components
-* Repository suites
-* Repository mirrors
-
-This helps prevent invalid repository configurations from being generated.
-
-#### `repository_data.json`
-
-Contains Debian repository metadata used by the backend and frontend.
-
-### Frontend Files
-
-#### `index.html`
-
-Defines the main user interface, including:
-
-* Mirror selection
-* Release selection
-* Component selection
-* Suite selection
-* Output format selection
-* Generated configuration preview
-* Copy button
-* Download button
-* Theme toggle
-
-#### `app.js`
-
-Handles frontend application logic and communication with the FastAPI backend.
-
-It is responsible for:
-
-* Loading repository data
-* Populating configuration controls
-* Sending generation requests
-* Displaying generated output
-* Copying output to the clipboard
-* Downloading generated files
-* Managing light/dark theme preferences
-
-#### `style.css`
-
-Contains the application's visual design, responsive layout, form controls, panels, themes, and other UI styles.
-
-## How It Works
-
-The application follows a simple workflow:
-
-```text
-User
-  │
-  ▼
-Web Interface
-  │
-  ├── Select Mirror
-  ├── Select Release
-  ├── Select Components
-  ├── Select Suites
-  └── Select Output Format
-  │
-  ▼
-FastAPI Backend
-  │
-  ├── Validate Request
-  ├── Load Repository Data
-  └── Generate Configuration
-  │
-  ▼
-Generated APT Configuration
-  │
-  ├── Copy
-  └── Download
-```
-
-## Running the Project
-
-### Requirements
-
-Before running the project, make sure you have the following installed:
-
-* Python 3.10 or newer
-* `uv`
-* A modern web browser
+## Getting Started
 
 ### 1. Clone the Repository
-
-Clone the project and enter its directory:
 
 ```bash
 git clone <repository-url>
 cd SourcesList
 ```
 
-### 2. Create a Virtual Environment
+### 2. Configure Environment Variables
 
-Create a Python virtual environment using `uv`:
+Create a `.env` file in the project root:
 
-```bash
-uv venv
+```env
+DB_PASSWORD=replace-with-a-strong-password
+DATABASE_URL=postgresql://sourceslist:replace-with-a-strong-password@db:5432/sourceslist
 ```
 
-Activate the virtual environment if desired.
+The variables are used by Docker Compose:
 
-#### Linux / macOS
+| Variable | Description |
+|---|---|
+| `DB_PASSWORD` | Password assigned to the PostgreSQL user. |
+| `DATABASE_URL` | Connection URL used by the backend to connect to PostgreSQL. |
 
-```bash
-source .venv/bin/activate
-```
+**Important:**
 
-#### Windows
+- Replace the example password with a strong password.
+- The hostname `db` is the PostgreSQL service name inside the Compose network. Do not replace it with `localhost` when the backend runs inside Compose.
+- If your password contains URL-reserved characters, URL-encode them in `DATABASE_URL`.
+- Never commit `.env` to a public repository.
 
-```powershell
-.venv\Scripts\activate
-```
+## Running with Docker Compose
 
-### 3. Install Backend Dependencies
+The recommended way to run the application is through Docker Compose.
 
-Install the required Python packages:
-
-```bash
-uv pip install fastapi uvicorn pydantic
-```
-
-If the project contains a `requirements.txt` file, install the dependencies with:
+### 1. Build and Start the Services
 
 ```bash
-uv pip install -r backend/requirements.txt
+docker compose up -d --build
 ```
 
-### 4. Start the Backend
-
-Navigate to the backend directory:
+Or, with Podman:
 
 ```bash
-cd backend
+podman compose up -d --build
 ```
 
-Start the FastAPI server using `uv`:
+This command:
+
+- Builds the application image.
+- Creates the application and database containers.
+- Creates the Compose network.
+- Creates the persistent PostgreSQL volume if it does not already exist.
+- Starts the services in the background.
+
+### 2. Check Container Status
 
 ```bash
-uv run uvicorn main:app --reload
+docker compose ps
+```
+
+Or:
+
+```bash
+podman compose ps
+```
+
+### 3. View Application Logs
+
+```bash
+docker compose logs -f app
+```
+
+For PostgreSQL:
+
+```bash
+docker compose logs -f db
+```
+
+### 4. Open the Application
+
+Once the services are running, open:
+
+```text
+http://localhost:8000
+```
+
+FastAPI interactive API documentation:
+
+```text
+http://localhost:8000/docs
+```
+
+The application is exposed through port `8000`.
+
+## Container Management
+
+The following commands are useful for everyday operation.
+
+| Command | Description |
+|---|---|
+| `compose up -d` | Create and start services in the background. |
+| `compose up -d --build` | Rebuild the application image and start services. |
+| `compose stop` | Stop running containers without removing them. |
+| `compose start` | Start previously created containers. |
+| `compose restart` | Restart services. |
+| `compose ps` | Display service status. |
+| `compose logs -f` | Follow service logs. |
+| `compose down` | Stop and remove containers and the Compose network. |
+
+Use the appropriate command prefix:
+
+```bash
+docker compose
+```
+
+or:
+
+```bash
+podman compose
+```
+
+### Database Persistence
+
+PostgreSQL data is stored in a named volume:
+
+```yaml
+volumes:
+  postgres_data:
+```
+
+This means database data is preserved when containers are stopped or removed using:
+
+```bash
+podman compose down
+```
+
+To remove the containers and the database volume as well:
+
+```bash
+podman compose down -v
+```
+
+**Warning:** The `-v` option permanently removes the Compose-managed database volume and its stored data. Do not use it unless you intentionally want to delete the database.
+
+## Local Development
+
+Containerized deployment is recommended for normal usage. However, you can also run the backend directly on your machine.
+
+### 1. Install Dependencies
+
+Make sure Python 3.13 and `uv` are installed.
+
+Create a virtual environment and install the locked dependencies:
+
+```bash
+uv sync --frozen
+```
+
+### 2. Configure the Database
+
+Start a PostgreSQL instance and configure `DATABASE_URL` to point to it.
+
+For example, when PostgreSQL is running directly on the host:
+
+```env
+DATABASE_URL=postgresql://sourceslist:your-password@localhost:5432/sourceslist
+```
+
+The database and the required database user must exist before starting the application.
+
+### 3. Start the Backend
+
+From the project root:
+
+```bash
+uv run uvicorn app.main:app --reload --host 127.0.0.1 --port 8000
 ```
 
 The backend will be available at:
@@ -299,135 +270,155 @@ The backend will be available at:
 http://127.0.0.1:8000
 ```
 
-FastAPI's interactive API documentation is available at:
+API documentation:
 
 ```text
 http://127.0.0.1:8000/docs
 ```
 
-### 5. Start the Frontend
+The frontend is served by the application, so you can access it through the backend address rather than opening the HTML file directly.
 
-The frontend is a static HTML/CSS/JavaScript application.
+### 4. Stop the Development Server
 
-Simply open the following file in your browser:
-
-```text
-frontend/index.html
-```
-
-The browser will load the application directly from `index.html`.
-
-Make sure the FastAPI backend is running before using the application, since the frontend communicates with the backend API.
-
-### 6. Use the Application
-
-After starting the backend and opening the frontend:
-
-1. Open `frontend/index.html` in your browser.
-2. Select the desired Debian release.
-3. Select a repository mirror.
-4. Select the required repository components.
-5. Select the desired suites or update channels.
-6. Choose the output format.
-7. Generate the configuration.
-8. Copy the generated configuration or download it as a file.
-
-The frontend communicates with the FastAPI backend at:
-
-```text
-http://127.0.0.1:8000
-```
-
-### Development
-
-For backend development, run:
-
-```bash
-cd backend
-uv run uvicorn main:app --reload
-```
-
-The `--reload` option automatically restarts the server whenever backend source files are modified.
-
-The frontend does not require a separate development server. Simply open:
-
-```text
-frontend/index.html
-```
-
-in your browser.
-
-### Stopping the Backend
-
-To stop the FastAPI development server, press:
+Press:
 
 ```text
 Ctrl + C
 ```
 
-If you activated the virtual environment manually, you can deactivate it with:
+## API
 
-```bash
-deactivate
+The backend is powered by FastAPI and exposes HTTP endpoints for application functionality.
+
+Interactive API documentation is available at:
+
+```text
+http://localhost:8000/docs
 ```
 
-## Example Output
+The documentation provides the available routes, request schemas, response formats, and endpoint testing interface.
 
-For a typical Debian configuration, the generated `sources.list` may look similar to:
+## Configuration Generation
+
+The application supports two output formats:
+
+### Traditional `sources.list`
+
+Example:
 
 ```text
 deb https://deb.debian.org/debian trixie main contrib non-free non-free-firmware
 deb https://deb.debian.org/debian trixie-updates main contrib non-free non-free-firmware
 ```
 
-The exact output depends on the release, mirror, components, and suites selected by the user.
+### Deb822 `debian.sources`
 
-## Goals
+Example:
 
-The main goals of the project are to:
+```text
+Types: deb
+URIs: https://deb.debian.org/debian
+Suites: trixie trixie-updates
+Components: main contrib non-free non-free-firmware
+```
 
-* Make APT repository configuration easier and less error-prone
-* Provide a simple graphical interface for generating repository files
-* Support modern Debian repository configuration formats
-* Keep repository metadata separate from application logic
-* Provide validation before generating configuration files
-* Make it easy to copy or download generated configurations
-* Expand support for additional Debian-based distributions in the future
+The actual output depends on the selected distribution release, mirror, components, suites, and output format.
+
+## Development Notes
+
+- Repository metadata should remain separate from configuration-generation logic.
+- Configuration requests must be validated by the backend.
+- Database credentials should be supplied through environment variables.
+- Do not commit `.env` or other files containing secrets.
+- When application source files change, rebuild and recreate the application container to apply the changes:
+
+```bash
+podman compose up -d --build
+```
+
+The PostgreSQL volume is preserved during this process.
+
+## Troubleshooting
+
+### Application Cannot Connect to PostgreSQL
+
+Check that both services are running:
+
+```bash
+podman compose ps
+```
+
+Inspect the database logs:
+
+```bash
+podman compose logs db
+```
+
+Verify that `DATABASE_URL` uses the Compose service hostname:
+
+```text
+db
+```
+
+Also verify that the database username, password, and database name match the PostgreSQL configuration.
+
+### Database Authentication Failed
+
+PostgreSQL initializes its user and password when its data directory is first created. Changing `DB_PASSWORD` in `.env` does not automatically change the password of an already initialized database user.
+
+Update the existing PostgreSQL role password when necessary, then restart the application.
+
+### Changes Are Not Visible
+
+If you changed application source files, rebuild the image:
+
+```bash
+podman compose up -d --build
+```
+
+### Port 8000 Is Already in Use
+
+Check which process is using the port:
+
+```bash
+ss -ltnp | grep ':8000'
+```
+
+Stop the conflicting process or change the host-side port mapping in `compose.yaml`.
 
 ## Future Improvements
 
-Possible future improvements include:
+Potential areas for future development include:
 
-* Ubuntu support
-* Support for additional Debian-based distributions
-* Improved `debian.sources` generation
-* Automatic detection of the user's Linux distribution
-* Automatic mirror selection
-* Mirror availability checking
-* Repository configuration presets
-* More detailed validation and error messages
-* API documentation and examples
-* Containerized deployment with Docker
-* Automated tests
-* Improved mobile and responsive support
+- Ubuntu support.
+- Support for additional Debian-based distributions.
+- Expanded Deb822 configuration options.
+- Automatic distribution detection.
+- Automatic mirror selection.
+- Mirror availability checks.
+- Repository configuration presets.
+- More detailed validation and error reporting.
+- Automated backend and frontend tests.
+- CI/CD integration.
+- Improved mobile and responsive design.
 
 ## Contributing
 
-Contributions are welcome!
+Contributions are welcome.
 
-You can contribute by:
+You can help by:
 
-* Reporting bugs
-* Suggesting new features
-* Improving the documentation
-* Improving the frontend
-* Adding support for additional distributions
-* Improving repository validation
-* Submitting pull requests
+- Reporting bugs.
+- Suggesting improvements.
+- Improving documentation.
+- Adding support for additional distributions.
+- Improving repository metadata and validation.
+- Submitting pull requests.
 
-Before submitting a pull request, please make sure that your changes are tested and documented where appropriate.
+Please test your changes and update the documentation when necessary.
 
 ## License
 
-This project is licensed under the GNU General Public License v3.0.
-See the LICENSE file for the full license text.
+This project is licensed under the **GNU General Public License v3.0 (GPL-3.0)**.
+
+See the `LICENSE` file for the complete license text.

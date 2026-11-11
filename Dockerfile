@@ -1,24 +1,40 @@
 
-# use with base image
-FROM python:3.13-slim 
+######## Stage 1: Builder ########
 
+FROM python:3.13-slim AS builder
 
 ENV PYTHONDONTWRITEBYTECODE=1 \
-    PYTHONUNBUFFERED=1
+    PYTHONUNBUFFERED=1 \
+    UV_COMPILE_BYTECODE=1
 
 WORKDIR /app
 
-# install uv
+# Install uv
 COPY --from=ghcr.io/astral-sh/uv:latest /uv /uvx /bin/
-COPY  pyproject.toml uv.lock ./
+
+# Install dependencies
+COPY pyproject.toml uv.lock ./
 
 RUN uv sync --frozen --no-dev --no-install-project
 
+
+
+######### Stage 2: Runtime ########
+
+FROM python:3.13-slim AS runtime
+
+ENV PYTHONDONTWRITEBYTECODE=1 \
+    PYTHONUNBUFFERED=1 \
+    PATH="/app/.venv/bin:$PATH"
+
+WORKDIR /app
+
+# Copy virtual environment from builder
+COPY --from=builder /app/.venv /app/.venv
+
+# Copy application files
 COPY app/ ./app/
 COPY frontend/ ./frontend/
-
-# Use the virtual environment created by uv
-ENV PATH="/app/.venv/bin:$PATH"
 
 EXPOSE 8000
 
